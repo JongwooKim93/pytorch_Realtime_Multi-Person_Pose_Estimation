@@ -1,6 +1,5 @@
 import argparse
 import time
-import os
 import numpy as np
 from collections import OrderedDict
 
@@ -12,12 +11,17 @@ from lib.network.rtpose_vgg import get_model, use_vgg
 from lib.datasets import coco, transforms, datasets
 from lib.config import update_config
 
-DATA_DIR = '/data/coco'
+from pathlib import Path
 
-ANNOTATIONS_TRAIN = [os.path.join(DATA_DIR, 'annotations', item) for item in ['person_keypoints_train2017.json']]
-ANNOTATIONS_VAL = os.path.join(DATA_DIR, 'annotations', 'person_keypoints_val2017.json')
-IMAGE_DIR_TRAIN = os.path.join(DATA_DIR, 'images/train2017')
-IMAGE_DIR_VAL = os.path.join(DATA_DIR, 'images/val2017')
+SRC_DIR = Path(__file__).parent \
+    .joinpath('..') \
+    .absolute() # MPPE/train/train_VGG19.py
+DATA_DIR = SRC_DIR.joinpath('lib/datasets/coco')
+
+ANNOTATIONS_TRAIN = [DATA_DIR.joinpath('annotations', item) for item in ['person_keypoints_train2017.json']]
+ANNOTATIONS_VAL = DATA_DIR.joinpath('annotations', 'person_keypoints_val2017.json')
+IMAGE_DIR_TRAIN = DATA_DIR.joinpath('images', 'train2017')
+IMAGE_DIR_VAL = DATA_DIR.joinpath('images', 'val2017')
 
 
 def train_cli(parser):
@@ -331,7 +335,11 @@ lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.8, patience=5, 
 
 best_val_loss = np.inf
 
-model_save_filename = './network/weight/best_pose.pth'
+model_save_filename = SRC_DIR.joinpath('network','weight', 'best_pose.pth')
+
+if not model_save_filename.parent.is_dir():
+    model_save_filename.parent.mkdir(parents=True)
+
 for epoch in range(5, args.epochs):
 
     # train for one epoch

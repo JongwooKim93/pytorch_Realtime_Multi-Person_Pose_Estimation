@@ -13,6 +13,8 @@ from network.rtpose_vgg import get_model, use_vgg
 from network import rtpose_shufflenetV2
 from training.datasets.coco import get_loader
 
+from tensorboardX import SummaryWriter
+
 # Hyper-params
 parser = argparse.ArgumentParser(description='PyTorch rtpose Training')
 parser.add_argument('--data_dir', default='/data/coco/images', type=str, metavar='DIR',
@@ -50,7 +52,7 @@ parser.add_argument('-b', '--batch_size', default=80, type=int,
 
 parser.add_argument('--print_freq', default=20, type=int, metavar='N',
                     help='number of iterations to print the training statistics')
-from tensorboardX import SummaryWriter
+
 args = parser.parse_args()
 
 os.environ['CUDA_VISIBLE_DEVICES'] = ','.join(str(e) for e in args.gpu_ids)
@@ -74,14 +76,11 @@ params_transform['flip_prob'] = 0.5
 params_transform['np'] = 56
 params_transform['sigma'] = 7.0
 
-def get_loss(saved_for_loss, heat_temp, heat_weight,
-               vec_temp, vec_weight):
-
+def get_loss(saved_for_loss, heat_temp, heat_weight, vec_temp, vec_weight):
     saved_for_log = OrderedDict()
     criterion = nn.MSELoss(size_average=True).cuda()
     #criterion = encoding.nn.DataParallelCriterion(criterion, device_ids=args.gpu_ids)
     total_loss = 0
-
 
     pred1 = saved_for_loss[0] * vec_weight
     """
@@ -160,9 +159,9 @@ def train(train_loader, model, optimizer, epoch):
         _,saved_for_loss = model(img)
 
         total_loss, saved_for_log = get_loss(saved_for_loss, heatmap_target, heat_mask,
-               paf_target, paf_mask)
+                                             paf_target, paf_mask)
 
-        for name,_ in meter_dict.items():
+        for name in meter_dict.keys():
             meter_dict[name].update(saved_for_log[name], img.size(0))
         losses.update(total_loss, img.size(0))
 
@@ -180,9 +179,10 @@ def train(train_loader, model, optimizer, epoch):
             print_string += 'Loss {loss.val:.4f} ({loss.avg:.4f})'.format(loss=losses)
 
             for name, value in meter_dict.items():
-                print_string+='{name}: {loss.val:.4f} ({loss.avg:.4f})\t'.format(name=name, loss=value)
+                print_string += '{name}: {loss.val:.4f} ({loss.avg:.4f})\t'.format(name=name, loss=value)
             print(print_string)
     return losses.avg
+
 
 def validate(val_loader, model, epoch):
     batch_time = AverageMeter()
@@ -211,10 +211,10 @@ def validate(val_loader, model, epoch):
         paf_mask = paf_mask.cuda()
 
         # compute output
-        _,saved_for_loss = model(img)
+        _, saved_for_loss = model(img)
 
         total_loss, saved_for_log = get_loss(saved_for_loss, heatmap_target, heat_mask,
-               paf_target, paf_mask)
+                                             paf_target, paf_mask)
 
         #for name,_ in meter_dict.items():
         #    meter_dict[name].update(saved_for_log[name], img.size(0))
@@ -235,7 +235,7 @@ def validate(val_loader, model, epoch):
             print_string += 'Loss {loss.val:.4f} ({loss.avg:.4f})'.format(loss=losses)
 
             for name, value in meter_dict.items():
-                print_string+='{name}: {loss.val:.4f} ({loss.avg:.4f})\t'.format(name=name, loss=value)
+                print_string += '{name}: {loss.val:.4f} ({loss.avg:.4f})\t'.format(name=name, loss=value)
             print(print_string)
 
     return losses.avg
@@ -268,9 +268,9 @@ print('train dataset len: {}'.format(len(train_data.dataset)))
 
 # validation data
 valid_data = get_loader(args.json_path, args.data_dir, args.mask_dir, 368,
-                            8, preprocess='rtpose', training=False,
-                            batch_size=args.batch_size,  params_transform = params_transform,
-                            shuffle=False, num_workers=4)
+                        8, preprocess='rtpose', training=False,
+                        batch_size=args.batch_size,  params_transform = params_transform,
+                        shuffle=False, num_workers=4)
 print('val dataset len: {}'.format(len(valid_data.dataset)))
 
 # model
@@ -278,10 +278,7 @@ model = rtpose_shufflenetV2.Network(width_multiplier=1.0)
 #model = encoding.nn.DataParallelModel(model, device_ids=args.gpu_ids)
 model = torch.nn.DataParallel(model).cuda()
 
-
 writer = SummaryWriter(log_dir=args.logdir)
-
-
 trainable_vars = [param for param in model.parameters() if param.requires_grad]
 optimizer = torch.optim.SGD(trainable_vars, lr=args.lr,
                            momentum=args.momentum,
@@ -289,13 +286,10 @@ optimizer = torch.optim.SGD(trainable_vars, lr=args.lr,
                            nesterov=args.nesterov)
 
 lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.8, patience=5, verbose=True, threshold=0.0001, threshold_mode='rel', cooldown=3, min_lr=0, eps=1e-08)
-
 best_val_loss = np.inf
-
 
 model_save_filename = './network/weight/best_pose_ShuffleNetV2.pth'
 for epoch in range(args.epochs):
-
     # train for one epoch
     train_loss = train(train_data, model, optimizer, epoch)
 

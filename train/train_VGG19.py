@@ -12,6 +12,7 @@ from lib.datasets import coco, transforms, datasets
 from lib.config import update_config
 
 from pathlib import Path
+from tqdm import tqdm
 
 SRC_DIR = Path(__file__).parent \
     .joinpath('..') \
@@ -162,7 +163,7 @@ def train(train_loader, model, optimizer, epoch):
     model.train()
 
     end = time.time()
-    for i, (img, heatmap_target, paf_target) in enumerate(train_loader):
+    for img, heatmap_target, paf_target in tqdm(train_loader):
         # measure data loading time
         #writer.add_text('Text', 'text logged at step:' + str(i), i)
 
@@ -195,7 +196,7 @@ def validate(val_loader, model, epoch):
     model.eval()
 
     end = time.time()
-    for i, (img, heatmap_target, paf_target) in enumerate(val_loader):
+    for img, heatmap_target, paf_target in tqdm(val_loader):
         # measure data loading time
         img = img.cuda()
         heatmap_target = heatmap_target.cuda()

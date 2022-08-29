@@ -37,14 +37,14 @@ def train_cli(parser):
     group.add_argument('--batch-size', default=72, type=int,
                        help='batch size')
     group.add_argument('--lr', '--learning-rate', default=1., type=float,
-                    metavar='LR', help='initial learning rate')
+                       metavar='LR', help='initial learning rate')
     group.add_argument('--momentum', default=0.9, type=float, metavar='M',
-                    help='momentum')
+                       help='momentum')
     group.add_argument('--weight-decay', '--wd', default=0.000, type=float,
-                    metavar='W', help='weight decay (default: 1e-4)')
+                       metavar='W', help='weight decay (default: 1e-4)')
     group.add_argument('--nesterov', dest='nesterov', default=True, type=bool)
     group.add_argument('--print_freq', default=20, type=int, metavar='N',
-                    help='number of iterations to print the training statistics')
+                       help='number of iterations to print the training statistics')
 
 
 def train_factory(args, preprocess, target_transforms):
@@ -77,6 +77,7 @@ def train_factory(args, preprocess, target_transforms):
 
     return train_loader, val_loader, train_data, val_data
 
+
 def cli():
     parser = argparse.ArgumentParser(
         description=__doc__,
@@ -102,18 +103,14 @@ def cli():
                         help='ema decay constant')
     parser.add_argument('--debug-without-plots', default=False, action='store_true',
                         help='enable debug but dont plot')
-    parser.add_argument('--disable-cuda', action='store_true',
-                        help='disable CUDA')
+    parser.add_argument('--disable-cuda', action='store_true', help='disable CUDA')
     parser.add_argument('--model_path', default='./network/weight/', type=str, metavar='DIR',
-                    help='path to where the model saved')
+                        help='path to where the model saved')
     args = parser.parse_args()
 
     # add args.device
-    args.device = torch.device('cpu')
-    args.pin_memory = False
-    if not args.disable_cuda and torch.cuda.is_available():
-        args.device = torch.device('cuda')
-        args.pin_memory = True
+    args.pin_memory = not args.disable_cuda and torch.cuda.is_available()
+    args.device = torch.device('cuda' if args.pin_memory else 'cpu')
 
     return args
 
@@ -121,7 +118,8 @@ args = cli()
 
 print("Loading dataset...")
 # load train data
-preprocess = transforms.Compose([
+preprocess = transforms.Compose(
+    [
         transforms.Normalize(),
         transforms.RandomApply(transforms.HFlip(), 0.5),
         transforms.RescaleRelative(),
@@ -150,7 +148,6 @@ def get_loss(saved_for_loss, heat_temp, vec_temp):
     for j in range(6):
         pred1 = saved_for_loss[2 * j]
         pred2 = saved_for_loss[2 * j + 1]
-
 
         # Compute losses
         loss1 = criterion(pred1, vec_temp)
@@ -277,6 +274,7 @@ def validate(val_loader, model, epoch):
 
     return losses.avg
 
+
 class AverageMeter(object):
     """Computes and stores the average and current value"""
     def __init__(self):
@@ -297,9 +295,9 @@ class AverageMeter(object):
 # model
 model = get_model(trunk='vgg19')
 model = torch.nn.DataParallel(model).cuda()
+
 # load pretrained
 use_vgg(model)
-
 
 # Fix the VGG weights first, and then the weights will be released
 for i in range(20):
@@ -308,9 +306,9 @@ for i in range(20):
 
 trainable_vars = [param for param in model.parameters() if param.requires_grad]
 optimizer = torch.optim.SGD(trainable_vars, lr=args.lr,
-                           momentum=args.momentum,
-                           weight_decay=args.weight_decay,
-                           nesterov=args.nesterov)
+                            momentum=args.momentum,
+                            weight_decay=args.weight_decay,
+                            nesterov=args.nesterov)
 
 for epoch in range(5):
     # train for one epoch
@@ -325,14 +323,13 @@ for param in model.module.parameters():
 
 trainable_vars = [param for param in model.parameters() if param.requires_grad]
 optimizer = torch.optim.SGD(trainable_vars, lr=args.lr,
-                           momentum=args.momentum,
-                           weight_decay=args.weight_decay,
-                           nesterov=args.nesterov)
+                            momentum=args.momentum,
+                            weight_decay=args.weight_decay,
+                            nesterov=args.nesterov)
 
 lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.8, patience=5, verbose=True, threshold=0.0001, threshold_mode='rel', cooldown=3, min_lr=0, eps=1e-08)
 
 best_val_loss = np.inf
-
 
 model_save_filename = './network/weight/best_pose.pth'
 for epoch in range(5, args.epochs):

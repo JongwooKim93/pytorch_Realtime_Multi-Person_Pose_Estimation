@@ -1,15 +1,12 @@
 import argparse
-import time
 import numpy as np
-from collections import OrderedDict
 
 import torch
 import torch.nn as nn
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from lib.network.rtpose_vgg import get_model, use_vgg
-from lib.datasets import coco, transforms, datasets
-from lib.config import update_config
+from lib.datasets import transforms, datasets
 
 from pathlib import Path
 from tqdm import tqdm
@@ -135,9 +132,6 @@ train_loader, val_loader, train_data, val_data = train_factory(args, preprocess,
 
 
 def get_loss(saved_for_loss, heat_temp, vec_temp):
-
-    names = build_names()
-    saved_for_log = OrderedDict()
     criterion = nn.MSELoss(reduction='mean').cuda()
     total_loss = 0
 
@@ -162,7 +156,6 @@ def train(train_loader, model, optimizer, epoch):
     # switch to train mode
     model.train()
 
-    end = time.time()
     for img, heatmap_target, paf_target in tqdm(train_loader):
         # measure data loading time
         #writer.add_text('Text', 'text logged at step:' + str(i), i)
@@ -188,14 +181,11 @@ def train(train_loader, model, optimizer, epoch):
 
 
 def validate(val_loader, model, epoch):
-    batch_time = AverageMeter()
-    data_time = AverageMeter()
     losses = AverageMeter()
 
     # switch to train mode
     model.eval()
 
-    end = time.time()
     for img, heatmap_target, paf_target in tqdm(val_loader):
         # measure data loading time
         img = img.cuda()

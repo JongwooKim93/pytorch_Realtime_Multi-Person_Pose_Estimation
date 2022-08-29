@@ -133,15 +133,6 @@ preprocess = transforms.Compose(
 train_loader, val_loader, train_data, val_data = train_factory(args, preprocess, target_transforms=None)
 
 
-def build_names():
-    names = []
-
-    for j in range(1, 7):
-        for k in range(1, 3):
-            names.append('loss_stage%d_L%d' % (j, k))
-    return names
-
-
 def get_loss(saved_for_loss, heat_temp, vec_temp):
 
     names = build_names()
@@ -161,32 +152,11 @@ def get_loss(saved_for_loss, heat_temp, vec_temp):
         total_loss += loss2
         # print(total_loss)
 
-        # Get value from Variable and save for log
-        saved_for_log[names[2 * j]] = loss1.item()
-        saved_for_log[names[2 * j + 1]] = loss2.item()
-
-    saved_for_log['max_ht'] = torch.max(
-        saved_for_loss[-1].data[:, 0:-1, :, :]).item()
-    saved_for_log['min_ht'] = torch.min(
-        saved_for_loss[-1].data[:, 0:-1, :, :]).item()
-    saved_for_log['max_paf'] = torch.max(saved_for_loss[-2].data).item()
-    saved_for_log['min_paf'] = torch.min(saved_for_loss[-2].data).item()
-
-    return total_loss, saved_for_log
+    return total_loss
 
 
 def train(train_loader, model, optimizer, epoch):
-    batch_time = AverageMeter()
-    data_time = AverageMeter()
     losses = AverageMeter()
-
-    meter_dict = {}
-    for name in build_names():
-        meter_dict[name] = AverageMeter()
-    meter_dict['max_ht'] = AverageMeter()
-    meter_dict['min_ht'] = AverageMeter()
-    meter_dict['max_paf'] = AverageMeter()
-    meter_dict['min_paf'] = AverageMeter()
 
     # switch to train mode
     model.train()
@@ -198,7 +168,6 @@ def train(train_loader, model, optimizer, epoch):
 
         #for name, param in model.named_parameters():
         #    writer.add_histogram(name, param.clone().cpu().data.numpy(),i)
-        data_time.update(time.time() - end)
 
         img = img.cuda()
         heatmap_target = heatmap_target.cuda()
@@ -206,10 +175,7 @@ def train(train_loader, model, optimizer, epoch):
         # compute output
         _,saved_for_loss = model(img)
 
-        total_loss, saved_for_log = get_loss(saved_for_loss, heatmap_target, paf_target)
-
-        for name,_ in meter_dict.items():
-            meter_dict[name].update(saved_for_log[name], img.size(0))
+        total_loss = get_loss(saved_for_loss, heatmap_target, paf_target)
         losses.update(total_loss, img.size(0))
 
         # compute gradient and do SGD step
@@ -217,17 +183,6 @@ def train(train_loader, model, optimizer, epoch):
         total_loss.backward()
         optimizer.step()
 
-        # measure elapsed time
-        batch_time.update(time.time() - end)
-        end = time.time()
-        if i % args.print_freq == 0:
-            print_string = 'Epoch: [{0}][{1}/{2}]\t'.format(epoch, i, len(train_loader))
-            print_string +='Data time {data_time.val:.3f} ({data_time.avg:.3f})\t'.format( data_time=data_time)
-            print_string += 'Loss {loss.val:.4f} ({loss.avg:.4f})'.format(loss=losses)
-
-            for name, value in meter_dict.items():
-                print_string+='{name}: {loss.val:.4f} ({loss.avg:.4f})\t'.format(name=name, loss=value)
-            print(print_string)
     return losses.avg
 
 
@@ -236,45 +191,22 @@ def validate(val_loader, model, epoch):
     data_time = AverageMeter()
     losses = AverageMeter()
 
-    meter_dict = {}
-    for name in build_names():
-        meter_dict[name] = AverageMeter()
-    meter_dict['max_ht'] = AverageMeter()
-    meter_dict['min_ht'] = AverageMeter()
-    meter_dict['max_paf'] = AverageMeter()
-    meter_dict['min_paf'] = AverageMeter()
     # switch to train mode
     model.eval()
 
     end = time.time()
     for i, (img, heatmap_target, paf_target) in enumerate(val_loader):
         # measure data loading time
-        data_time.update(time.time() - end)
         img = img.cuda()
         heatmap_target = heatmap_target.cuda()
         paf_target = paf_target.cuda()
 
         # compute output
-        _,saved_for_loss = model(img)
+        _, saved_for_loss = model(img)
 
-        total_loss, saved_for_log = get_loss(saved_for_loss, heatmap_target, paf_target)
-
-        #for name,_ in meter_dict.items():
-        #    meter_dict[name].update(saved_for_log[name], img.size(0))
+        total_loss = get_loss(saved_for_loss, heatmap_target, paf_target)
 
         losses.update(total_loss.item(), img.size(0))
-
-        # measure elapsed time
-        batch_time.update(time.time() - end)
-        end = time.time()
-        if i % args.print_freq == 0:
-            print_string = 'Epoch: [{0}][{1}/{2}]\t'.format(epoch, i, len(val_loader))
-            print_string +='Data time {data_time.val:.3f} ({data_time.avg:.3f})\t'.format( data_time=data_time)
-            print_string += 'Loss {loss.val:.4f} ({loss.avg:.4f})'.format(loss=losses)
-
-            for name, value in meter_dict.items():
-                print_string+='{name}: {loss.val:.4f} ({loss.avg:.4f})\t'.format(name=name, loss=value)
-            print(print_string)
 
     return losses.avg
 
@@ -321,6 +253,8 @@ for epoch in range(5):
     # evaluate on validation set
     val_loss = validate(val_loader, model, epoch)
 
+    print(f'Epoch: [{epoch}] train loss: {train_loss}, val loss: {val_loss}')
+
 # Release all weights
 for param in model.module.parameters():
     param.requires_grad = True
@@ -350,8 +284,11 @@ for epoch in range(5, args.epochs):
 
     lr_scheduler.step(val_loss)
 
-    is_best = val_loss<best_val_loss
+    print(f'Epoch: [{epoch}] train loss: {train_loss}, val loss: {val_loss}')
+
+    is_best = val_loss < best_val_loss
     best_val_loss = min(val_loss, best_val_loss)
     if is_best:
+        print(f'[TRACE] Update {model_save_filename}')
         torch.save(model.state_dict(), model_save_filename)
 

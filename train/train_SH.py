@@ -16,18 +16,24 @@ from training.datasets.coco import get_loader
 
 from tensorboardX import SummaryWriter
 
+from pathlib import Path
+
+SRC_DIR = Path(__file__).parent \
+    .joinpath('..') \
+    .absolute() # MPPE/train/train_xxx.py
+
 # Hyper-params
 parser = argparse.ArgumentParser(description='PyTorch rtpose Training')
-parser.add_argument('--data_dir', default='/data/coco/images', type=str, metavar='DIR',
+parser.add_argument('--data_dir', default=SRC_DIR.joinpath('lib', 'datasets', 'coco', 'images'), type=Path, metavar='DIR',
                     help='path to where coco images stored')
-parser.add_argument('--mask_dir', default='/data/coco/', type=str, metavar='DIR',
+parser.add_argument('--mask_dir', default=SRC_DIR.joinpath('lib', 'datasets', 'coco'), type=Path, metavar='DIR',
                     help='path to where coco images stored')
-parser.add_argument('--logdir', default='/extra/tensorboy', type=str, metavar='DIR',
+parser.add_argument('--logdir', default=SRC_DIR.joinpath('extra', 'tensorboy'), type=Path, metavar='DIR',
                     help='path to where tensorboard log restore')
-parser.add_argument('--json_path', default='/data/coco/COCO.json', type=str, metavar='PATH',
+parser.add_argument('--json_path', default=DATA_DIR.joinpath('annotations'), type=Path, metavar='PATH',
                     help='path to where coco images stored')
 
-parser.add_argument('--model_path', default='./network/weight/', type=str, metavar='DIR',
+parser.add_argument('--model_path', default=SRC_DIR.joinpath('network','weight'), type=Path, metavar='DIR',
                     help='path to where the model saved')
 
 parser.add_argument('--lr', '--learning-rate', default=1., type=float,
@@ -293,7 +299,7 @@ optimizer = torch.optim.SGD(trainable_vars, lr=args.lr,
 lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.8, patience=5, verbose=True, threshold=0.0001, threshold_mode='rel', cooldown=3, min_lr=0, eps=1e-08)
 best_val_loss = np.inf
 
-model_save_filename = './network/weight/best_pose_SH.pth'
+model_save_filename = args.model_path.joinpath('best_pose_SH.pth')
 for epoch in range(args.epochs):
 
     # train for one epoch

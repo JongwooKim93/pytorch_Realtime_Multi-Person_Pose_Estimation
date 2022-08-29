@@ -1,4 +1,5 @@
 import argparse
+import gc
 import numpy as np
 
 import torch
@@ -177,6 +178,9 @@ def train(train_loader, model, optimizer, epoch):
         total_loss.backward()
         optimizer.step()
 
+        del img, heatmap_target, paf_target
+        gc.collect()
+
     return losses.avg
 
 
@@ -198,6 +202,9 @@ def validate(val_loader, model, epoch):
         total_loss = get_loss(saved_for_loss, heatmap_target, paf_target)
 
         losses.update(total_loss.item(), img.size(0))
+
+        del img, heatmap_target, paf_target
+        gc.collect()
 
     return losses.avg
 
@@ -244,6 +251,7 @@ for epoch in range(5):
     # evaluate on validation set
     val_loss = validate(val_loader, model, epoch)
 
+    torch.cuda.empty_cache()
     print(f'Epoch: [{epoch}] train loss: {train_loss}, val loss: {val_loss}')
 
 # Release all weights
@@ -283,3 +291,4 @@ for epoch in range(5, args.epochs):
         print(f'[TRACE] Update {model_save_filename}')
         torch.save(model.state_dict(), model_save_filename)
 
+    torch.cuda.empty_cache()

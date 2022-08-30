@@ -22,13 +22,13 @@ def rtpose_preprocess(image):
 
 def inverse_rtpose_preprocess(image):
     image = image.astype(np.float32)
-    image = image.transpose((1, 2, 0)).astype(np.float32)    
-    image = (image + 0.5) * 256. 
+    image = image.transpose((1, 2, 0)).astype(np.float32)
+    image = (image + 0.5) * 256.
     image = image.astype(np.uint8)
 
 
     return image
-    
+
 def vgg_preprocess(image):
     image = image.astype(np.float32) / 255.
     means = [0.485, 0.456, 0.406]
@@ -55,15 +55,15 @@ def inverse_vgg_preprocess(image):
     means = [0.485, 0.456, 0.406]
     stds = [0.229, 0.224, 0.225]
     image = image.transpose((1,2,0))
-    
+
     for i in range(3):
         image[:, :, i] = image[:, :, i] * stds[i]
         image[:, :, i] = image[:, :, i] + means[i]
     image = image.copy()[:,:,::-1]
     image = image*255
-    
+
     return image
-    
+
 def inverse_inception_preprocess(image):
 
     image = image.copy()
@@ -71,9 +71,9 @@ def inverse_inception_preprocess(image):
     image = image[:, :, ::-1]
     image = (image  + 1.)*128.
     image = image.astype(np.uint8)
-    
+
     return image
-    
+
 def ssd_preprocess(image):
     image = image.astype(np.float32)
     rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)

@@ -47,7 +47,7 @@ class ASPP_ASP(nn.Module):
         out = F.relu(self.bn_out(torch.cat([add1, add2, add3, add4], 1))) # (shape: (batch_size, 1280, h/16, w/16))
 
         return out
-        
+
 
 def conv_dw(in_channels, out_channels, kernel_size=3, padding=1, stride=1, dilation=1):
     return nn.Sequential(
@@ -105,7 +105,7 @@ class AtrousPose(nn.Module):
         layers.append(Upsample(scale_factor=factor, mode='bilinear'))
 
         return nn.Sequential(*layers)
-        
+
     def forward(self, x):
         # import time
         # s = time.time()

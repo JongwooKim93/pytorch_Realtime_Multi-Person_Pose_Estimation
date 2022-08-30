@@ -11,9 +11,9 @@ from scipy import misc, ndimage
 
 """Implement the generate of every channel of ground truth heatmap.
 :param centerA: int with shape (2,), every coordinate of person's keypoint.
-:param accumulate_confid_map: one channel of heatmap, which is accumulated, 
+:param accumulate_confid_map: one channel of heatmap, which is accumulated,
        np.log(100) is the max value of heatmap.
-:param params_transform: store the value of stride and crop_szie_y, crop_size_x                 
+:param params_transform: store the value of stride and crop_szie_y, crop_size_x
 """
 
 
@@ -32,5 +32,5 @@ def putGaussianMaps(center, accumulate_confid_map, sigma, grid_y, grid_x, stride
     cofid_map = np.multiply(mask, cofid_map)
     accumulate_confid_map += cofid_map
     accumulate_confid_map[accumulate_confid_map > 1.0] = 1.0
-    
+
     return accumulate_confid_map

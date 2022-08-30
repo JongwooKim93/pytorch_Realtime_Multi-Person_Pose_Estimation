@@ -132,4 +132,4 @@ def crop_with_factor(im, dest_size=None, factor=32, is_ceil=True):
     im_croped[0:h, 0:w, :] = im
 
     return im_croped, im_scale, im.shape
-    
+

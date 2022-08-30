@@ -116,24 +116,24 @@ class HourglassNet(nn.Module):
             res.append(self._make_residual(block, self.num_feats, num_blocks))
             fc.append(self._make_fc(ch, ch))
             score_paf.append(nn.Conv2d(ch, paf_classes, kernel_size=1, bias=True))
-            score_ht.append(nn.Conv2d(ch, ht_classes, kernel_size=1, bias=True))            
+            score_ht.append(nn.Conv2d(ch, ht_classes, kernel_size=1, bias=True))
             if i < num_stacks - 1:
                 fc_.append(nn.Conv2d(ch, ch, kernel_size=1, bias=True))
                 paf_score_.append(nn.Conv2d(paf_classes, ch,
                                         kernel_size=1, bias=True))
                 ht_score_.append(nn.Conv2d(ht_classes, ch,
-                                        kernel_size=1, bias=True))                                        
+                                        kernel_size=1, bias=True))
         self.hg = nn.ModuleList(hg)
         self.res = nn.ModuleList(res)
         self.fc = nn.ModuleList(fc)
         self.score_ht = nn.ModuleList(score_ht)
-        self.score_paf = nn.ModuleList(score_paf)        
+        self.score_paf = nn.ModuleList(score_paf)
         self.fc_ = nn.ModuleList(fc_)
         self.paf_score_ = nn.ModuleList(paf_score_)
         self.ht_score_ = nn.ModuleList(ht_score_)
-        
-        self._initialize_weights_norm()        
-        
+
+        self._initialize_weights_norm()
+
     def _make_residual(self, block, planes, blocks, stride=1):
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
@@ -160,7 +160,7 @@ class HourglassNet(nn.Module):
         )
 
     def forward(self, x):
-        saved_for_loss = []    
+        saved_for_loss = []
         out = []
         x = self.conv1(x)
         x = self.bn1(x)
@@ -176,30 +176,30 @@ class HourglassNet(nn.Module):
             y = self.res[i](y)
             y = self.fc[i](y)
             score_paf = self.score_paf[i](y)
-            score_ht = self.score_ht[i](y)            
+            score_ht = self.score_ht[i](y)
             if i < self.num_stacks - 1:
                 fc_ = self.fc_[i](y)
                 paf_score_ = self.paf_score_[i](score_paf)
-                ht_score_ = self.ht_score_[i](score_ht)                
+                ht_score_ = self.ht_score_[i](score_ht)
                 x = x + fc_ + paf_score_ + ht_score_
-                
+
         saved_for_loss.append(score_paf)
         saved_for_loss.append(score_ht)
 
         return (score_paf, score_ht), saved_for_loss
 
-    def _initialize_weights_norm(self):        
+    def _initialize_weights_norm(self):
        for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 init.normal_(m.weight, std=0.01)
                 if m.bias is not None:  # mobilenet conv2d doesn't add bias
-                    init.constant_(m.bias, 0.0) 
+                    init.constant_(m.bias, 0.0)
             elif isinstance(m, nn.BatchNorm2d):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
 def hg(**kwargs):
-    model = HourglassNet(Bottleneck, num_stacks=kwargs['num_stacks'], 
-    num_blocks=kwargs['num_blocks'], paf_classes=kwargs['paf_classes'], 
+    model = HourglassNet(Bottleneck, num_stacks=kwargs['num_stacks'],
+    num_blocks=kwargs['num_blocks'], paf_classes=kwargs['paf_classes'],
     ht_classes=kwargs['ht_classes'])
     return model

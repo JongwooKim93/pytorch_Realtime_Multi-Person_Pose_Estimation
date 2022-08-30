@@ -126,7 +126,7 @@ class Compose(Preprocess):
         self.preprocess_list = preprocess_list
 
     def __call__(self, image, anns, meta):
-    
+
         augmentations = [partial(aug_meth) for aug_meth in self.preprocess_list]
         image, anns, meta = reduce(
             lambda md_i_mm, f: f(*md_i_mm),
@@ -398,8 +398,8 @@ class RandomApply(Preprocess):
         if float(torch.rand(1).item()) > self.probability:
             return image, anns, meta
         return self.transform(image, anns, meta)
-      
-          
+
+
 class RandomRotate(Preprocess):
     def __init__(self, max_rotate_degree=40):
         super().__init__()
@@ -412,7 +412,7 @@ class RandomRotate(Preprocess):
         meta = copy.deepcopy(meta)
         anns = copy.deepcopy(anns)
         w, h = image.size
-        
+
         dice = random.random()
         degree = (dice - 0.5) * 2 * \
             self.max_rotate_degree  # degree [-40,40]
@@ -422,10 +422,10 @@ class RandomRotate(Preprocess):
 
         for j,ann in enumerate(anns):
             for k in range(17):
-                xy = ann['keypoints'][k, :2]     
+                xy = ann['keypoints'][k, :2]
                 new_xy = self.rotatepoint(xy, R)
                 anns[j]['keypoints'][k, :2] = new_xy
-                
+
             ann['bbox'] = self.rotate_box(ann['bbox'], R)
 
         self.log.debug('meta before: %s', meta)
@@ -450,10 +450,10 @@ class RandomRotate(Preprocess):
 
         p[1] = new_point[1]
         return p
-    
+
     # The correct way to rotation an image
     # http://www.pyimagesearch.com/2017/01/02/rotate-images-correctly-with-opencv-and-python/
-   
+
     def rotate_bound(self, image, angle, bordervalue):
         # grab the dimensions of the image and then determine the
         # center
@@ -477,8 +477,8 @@ class RandomRotate(Preprocess):
 
         # perform the actual rotation and return the image
         return cv2.warpAffine(image, M, (nW, nH), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT,
-                              borderValue=bordervalue), M    
-        
+                              borderValue=bordervalue), M
+
     def rotate_box(self, bbox, R):
         """Input bounding box is of the form x, y, width, height."""
         four_corners = np.array([
@@ -487,12 +487,12 @@ class RandomRotate(Preprocess):
             [bbox[0], bbox[1] + bbox[3]],
             [bbox[0] + bbox[2], bbox[1] + bbox[3]],
         ])
-        
+
         new_four_corners = []
         for i in range(4):
             xy = self.rotatepoint(four_corners[i], R)
             new_four_corners.append(xy)
-        
+
         new_four_corners = np.array(new_four_corners)
 
         x = np.min(new_four_corners[:, 0])
@@ -500,4 +500,4 @@ class RandomRotate(Preprocess):
         xmax = np.max(new_four_corners[:, 0])
         ymax = np.max(new_four_corners[:, 1])
 
-        return np.array([x, y, xmax - x, ymax - y])        
+        return np.array([x, y, xmax - x, ymax - y])

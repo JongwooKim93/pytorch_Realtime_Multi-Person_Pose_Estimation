@@ -249,7 +249,7 @@ def draw_humans(npimg, humans, imgcopy=False):
             cv2.line(npimg, centers[pair[0]], centers[pair[1]], CocoColors[pair_order], 3)
 
     return npimg
-    
+
 class BodyPart:
     """
     part_idx : part index(eg. 0 for nose)
@@ -272,16 +272,16 @@ class BodyPart:
 
     def __repr__(self):
         return self.__str__()
-        
+
 CocoColors = [[255, 0, 0], [255, 85, 0], [255, 170, 0], [255, 255, 0], [170, 255, 0], [85, 255, 0], [0, 255, 0],
               [0, 255, 85], [0, 255, 170], [0, 255, 255], [0, 170, 255], [0, 85, 255], [0, 0, 255], [85, 0, 255],
               [170, 0, 255], [255, 0, 255], [255, 0, 170], [255, 0, 85]]
-              
+
 CocoPairs = [
     (1, 2), (1, 5), (2, 3), (3, 4), (5, 6), (6, 7), (1, 8), (8, 9), (9, 10), (1, 11),
     (11, 12), (12, 13), (1, 0), (0, 14), (14, 16), (0, 15), (15, 17), (2, 16), (5, 17)
 ]   # = 19
-CocoPairsRender = CocoPairs[:-2]            
-              
-              
-              
+CocoPairsRender = CocoPairs[:-2]
+
+
+

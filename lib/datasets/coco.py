@@ -1,5 +1,5 @@
-COCO_PERSON_SKELETON = [[2, 3], [3,4], [4, 5], [2, 6], [6,7], [7,8], [2,1]] 
-    
+COCO_PERSON_SKELETON = [[2, 3], [3,4], [4, 5], [2, 6], [6,7], [7,8], [2,1]]
+
 COCO_KEYPOINTS = [
     'nose',            # 1
     'left_eye',        # 2

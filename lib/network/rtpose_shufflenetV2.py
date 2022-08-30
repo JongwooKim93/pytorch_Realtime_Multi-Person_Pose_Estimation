@@ -32,22 +32,22 @@ class BasicBlock(nn.Module):
             assert in_channels == out_channels
             self.conv = nn.Sequential(
                 slim.conv_bn_relu(name + '/conv1', channels, channels, 1),
-                slim.conv_bn(name + '/conv2', 
-                    channels, channels, 3, stride=stride, 
+                slim.conv_bn(name + '/conv2',
+                    channels, channels, 3, stride=stride,
                     dilation=dilation, padding=dilation, groups=channels),
                 slim.conv_bn_relu(name + '/conv3', channels, channels, 1),
             )
         else:
             self.conv = nn.Sequential(
                 slim.conv_bn_relu(name + '/conv1', in_channels, channels, 1),
-                slim.conv_bn(name + '/conv2', 
-                    channels, channels, 3, stride=stride, 
+                slim.conv_bn(name + '/conv2',
+                    channels, channels, 3, stride=stride,
                     dilation=dilation, padding=dilation, groups=channels),
                 slim.conv_bn_relu(name + '/conv3', channels, channels, 1),
             )
             self.conv0 = nn.Sequential(
-                slim.conv_bn(name + '/conv4', 
-                    in_channels, in_channels, 3, stride=stride, 
+                slim.conv_bn(name + '/conv4',
+                    in_channels, in_channels, 3, stride=stride,
                     dilation=dilation, padding=dilation, groups=in_channels),
                 slim.conv_bn_relu(name + '/conv5', in_channels, channels, 1),
             )
@@ -113,10 +113,10 @@ class Network(nn.Module):
             if stride==2:
                 downsample=True
             stage_prefix = 'stage_{}'.format(i - 1)
-            blocks = [BasicBlock(stage_prefix + '_1', in_channels, 
+            blocks = [BasicBlock(stage_prefix + '_1', in_channels,
                 out_channels, stride, downsample, dilation)]
             for i in range(1, num_blocks):
-                blocks.append(BasicBlock(stage_prefix + '_{}'.format(i + 1), 
+                blocks.append(BasicBlock(stage_prefix + '_{}'.format(i + 1),
                     out_channels, out_channels, 1, False, dilation))
             self.network += [nn.Sequential(*blocks)]
 
@@ -222,7 +222,7 @@ if __name__ == '__main__':
     # Caffe model generation and converting.
     if args.save_caffe is not None:
         net.convert_to_caffe(args.save_caffe)
-        caffe_net = caffe.Net(args.save_caffe + '.prototxt', caffe.TEST, 
+        caffe_net = caffe.Net(args.save_caffe + '.prototxt', caffe.TEST,
             weights=(args.save_caffe + '.caffemodel'))
         caffe_net.blobs['data'].data[...] = img.copy()
         caffe_results = caffe_net.forward(blobs=['fc'])

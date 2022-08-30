@@ -228,7 +228,7 @@ def get_model(trunk='vgg19'):
 """Load pretrained model on Imagenet
 :param model, the PyTorch nn.Module which will train.
 :param model_path, the directory which load the pretrained model, will download one if not have.
-:param trunk, the feature extractor network of model.               
+:param trunk, the feature extractor network of model.
 """
 
 

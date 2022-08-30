@@ -41,12 +41,12 @@ def train_cli(parser):
     group.add_argument('--momentum', default=0.9, type=float, metavar='M',
                     help='momentum')
     group.add_argument('--weight-decay', '--wd', default=0.000, type=float,
-                    metavar='W', help='weight decay (default: 1e-4)') 
-    group.add_argument('--nesterov', dest='nesterov', default=True, type=bool)     
+                    metavar='W', help='weight decay (default: 1e-4)')
+    group.add_argument('--nesterov', dest='nesterov', default=True, type=bool)
     group.add_argument('--print_freq', default=20, type=int, metavar='N',
-                    help='number of iterations to print the training statistics')    
-                   
-                                         
+                    help='number of iterations to print the training statistics')
+
+
 def train_factory(args, preprocess, target_transforms):
     train_datas = [datasets.CocoKeypoints(
         root=args.train_image_dir,
@@ -58,7 +58,7 @@ def train_factory(args, preprocess, target_transforms):
     ) for item in args.train_annotations]
 
     train_data = torch.utils.data.ConcatDataset(train_datas)
-    
+
     train_loader = torch.utils.data.DataLoader(
         train_data, batch_size=args.batch_size, shuffle=True,
         pin_memory=args.pin_memory, num_workers=args.loader_workers, drop_last=True)
@@ -103,9 +103,9 @@ def cli():
     parser.add_argument('--debug-without-plots', default=False, action='store_true',
                         help='enable debug but dont plot')
     parser.add_argument('--disable-cuda', action='store_true',
-                        help='disable CUDA')                        
+                        help='disable CUDA')
     parser.add_argument('--model_path', default='./network/weight/', type=str, metavar='DIR',
-                    help='path to where the model saved')                         
+                    help='path to where the model saved')
     args = parser.parse_args()
 
     # add args.device
@@ -114,7 +114,7 @@ def cli():
     if not args.disable_cuda and torch.cuda.is_available():
         args.device = torch.device('cuda')
         args.pin_memory = True
-        
+
     return args
 
 args = cli()
@@ -149,12 +149,12 @@ def get_loss(saved_for_loss, heat_temp, vec_temp):
 
     for j in range(6):
         pred1 = saved_for_loss[2 * j]
-        pred2 = saved_for_loss[2 * j + 1] 
+        pred2 = saved_for_loss[2 * j + 1]
 
 
         # Compute losses
         loss1 = criterion(pred1, vec_temp)
-        loss2 = criterion(pred2, heat_temp) 
+        loss2 = criterion(pred2, heat_temp)
 
         total_loss += loss1
         total_loss += loss2
@@ -172,21 +172,21 @@ def get_loss(saved_for_loss, heat_temp, vec_temp):
     saved_for_log['min_paf'] = torch.min(saved_for_loss[-2].data).item()
 
     return total_loss, saved_for_log
-         
+
 
 def train(train_loader, model, optimizer, epoch):
     batch_time = AverageMeter()
     data_time = AverageMeter()
     losses = AverageMeter()
-    
+
     meter_dict = {}
     for name in build_names():
         meter_dict[name] = AverageMeter()
     meter_dict['max_ht'] = AverageMeter()
-    meter_dict['min_ht'] = AverageMeter()    
-    meter_dict['max_paf'] = AverageMeter()    
+    meter_dict['min_ht'] = AverageMeter()
+    meter_dict['max_paf'] = AverageMeter()
     meter_dict['min_paf'] = AverageMeter()
-    
+
     # switch to train mode
     model.train()
 
@@ -194,9 +194,9 @@ def train(train_loader, model, optimizer, epoch):
     for i, (img, heatmap_target, paf_target) in enumerate(train_loader):
         # measure data loading time
         #writer.add_text('Text', 'text logged at step:' + str(i), i)
-        
+
         #for name, param in model.named_parameters():
-        #    writer.add_histogram(name, param.clone().cpu().data.numpy(),i)        
+        #    writer.add_histogram(name, param.clone().cpu().data.numpy(),i)
         data_time.update(time.time() - end)
 
         img = img.cuda()
@@ -204,9 +204,9 @@ def train(train_loader, model, optimizer, epoch):
         paf_target = paf_target.cuda()
         # compute output
         _,saved_for_loss = model(img)
-        
+
         total_loss, saved_for_log = get_loss(saved_for_loss, heatmap_target, paf_target)
-        
+
         for name,_ in meter_dict.items():
             meter_dict[name].update(saved_for_log[name], img.size(0))
         losses.update(total_loss, img.size(0))
@@ -227,20 +227,20 @@ def train(train_loader, model, optimizer, epoch):
             for name, value in meter_dict.items():
                 print_string+='{name}: {loss.val:.4f} ({loss.avg:.4f})\t'.format(name=name, loss=value)
             print(print_string)
-    return losses.avg  
-        
-        
+    return losses.avg
+
+
 def validate(val_loader, model, epoch):
     batch_time = AverageMeter()
     data_time = AverageMeter()
     losses = AverageMeter()
-    
+
     meter_dict = {}
     for name in build_names():
         meter_dict[name] = AverageMeter()
     meter_dict['max_ht'] = AverageMeter()
-    meter_dict['min_ht'] = AverageMeter()    
-    meter_dict['max_paf'] = AverageMeter()    
+    meter_dict['min_ht'] = AverageMeter()
+    meter_dict['max_paf'] = AverageMeter()
     meter_dict['min_paf'] = AverageMeter()
     # switch to train mode
     model.eval()
@@ -252,20 +252,20 @@ def validate(val_loader, model, epoch):
         img = img.cuda()
         heatmap_target = heatmap_target.cuda()
         paf_target = paf_target.cuda()
-        
+
         # compute output
         _,saved_for_loss = model(img)
-        
+
         total_loss, saved_for_log = get_loss(saved_for_loss, heatmap_target, paf_target)
-               
+
         #for name,_ in meter_dict.items():
         #    meter_dict[name].update(saved_for_log[name], img.size(0))
-            
+
         losses.update(total_loss.item(), img.size(0))
 
         # measure elapsed time
         batch_time.update(time.time() - end)
-        end = time.time()  
+        end = time.time()
         if i % args.print_freq == 0:
             print_string = 'Epoch: [{0}][{1}/{2}]\t'.format(epoch, i, len(val_loader))
             print_string +='Data time {data_time.val:.3f} ({data_time.avg:.3f})\t'.format( data_time=data_time)
@@ -274,7 +274,7 @@ def validate(val_loader, model, epoch):
             for name, value in meter_dict.items():
                 print_string+='{name}: {loss.val:.4f} ({loss.avg:.4f})\t'.format(name=name, loss=value)
             print(print_string)
-                
+
     return losses.avg
 
 class AverageMeter(object):
@@ -310,16 +310,16 @@ trainable_vars = [param for param in model.parameters() if param.requires_grad]
 optimizer = torch.optim.SGD(trainable_vars, lr=args.lr,
                            momentum=args.momentum,
                            weight_decay=args.weight_decay,
-                           nesterov=args.nesterov)     
-                                                                                          
+                           nesterov=args.nesterov)
+
 for epoch in range(5):
     # train for one epoch
     train_loss = train(train_loader, model, optimizer, epoch)
 
     # evaluate on validation set
-    val_loss = validate(val_loader, model, epoch)  
-                                            
-# Release all weights                                   
+    val_loss = validate(val_loader, model, epoch)
+
+# Release all weights
 for param in model.module.parameters():
     param.requires_grad = True
 
@@ -327,8 +327,8 @@ trainable_vars = [param for param in model.parameters() if param.requires_grad]
 optimizer = torch.optim.SGD(trainable_vars, lr=args.lr,
                            momentum=args.momentum,
                            weight_decay=args.weight_decay,
-                           nesterov=args.nesterov)          
-                                                    
+                           nesterov=args.nesterov)
+
 lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.8, patience=5, verbose=True, threshold=0.0001, threshold_mode='rel', cooldown=3, min_lr=0, eps=1e-08)
 
 best_val_loss = np.inf
@@ -341,12 +341,12 @@ for epoch in range(5, args.epochs):
     train_loss = train(train_loader, model, optimizer, epoch)
 
     # evaluate on validation set
-    val_loss = validate(val_loader, model, epoch)   
-    
-    lr_scheduler.step(val_loss)                        
-    
+    val_loss = validate(val_loader, model, epoch)
+
+    lr_scheduler.step(val_loss)
+
     is_best = val_loss<best_val_loss
     best_val_loss = min(val_loss, best_val_loss)
     if is_best:
-        torch.save(model.state_dict(), model_save_filename)      
-          
+        torch.save(model.state_dict(), model_save_filename)
+

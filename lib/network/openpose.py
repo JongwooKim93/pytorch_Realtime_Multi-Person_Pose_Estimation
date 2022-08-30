@@ -136,7 +136,7 @@ class OpenPose_Model(nn.Module):
             L2_INNEROUT_CHS.append(512)
             L2_OUT_CHS.append(paf_out_channels)
         self.l2_stages = nn.ModuleList([
-            StageBlock(in_channels=L2_IN_CHS[i], inner_channels=L2_INNER_CHS[i], 
+            StageBlock(in_channels=L2_IN_CHS[i], inner_channels=L2_INNER_CHS[i],
                        innerout_channels=L2_INNEROUT_CHS[i], out_channels=L2_OUT_CHS[i])
             for i in range(len(L2_IN_CHS))
         ])
@@ -151,7 +151,7 @@ class OpenPose_Model(nn.Module):
             L1_INNEROUT_CHS.append(512)
             L1_OUT_CHS.append(heat_out_channels)
         self.l1_stages = nn.ModuleList([
-            StageBlock(in_channels=L1_IN_CHS[i], inner_channels=L1_INNER_CHS[i], 
+            StageBlock(in_channels=L1_IN_CHS[i], inner_channels=L1_INNER_CHS[i],
                        innerout_channels=L1_INNEROUT_CHS[i], out_channels=L1_OUT_CHS[i])
             for i in range(len(L1_IN_CHS))
         ])
@@ -184,8 +184,8 @@ class OpenPose_Model(nn.Module):
                     init.constant_(m.bias, 0.001)
             elif isinstance(m, nn.PReLU):
                 init.normal_(m.weight, std=0.01)
-                
-            
+
+
     def init_w_pretrained_weights(self, pkl_weights='/home/tomas/Desktop/AIFI/internal-repos/aifi-pose/network/weights/openpose/openpose.pkl'):
         with open(pkl_weights, 'rb') as f:
             weights = pickle.load(f, encoding='latin1')
@@ -208,7 +208,7 @@ class OpenPose_Model(nn.Module):
                 idx = next(prelu_idxs)
                 m.weight = torch.nn.Parameter(torch.Tensor(weights[idx]['weights'][0]))
 
-    
+
 def use_vgg(model):
 
     url = 'https://download.pytorch.org/models/vgg19-dcbb9e9d.pth'

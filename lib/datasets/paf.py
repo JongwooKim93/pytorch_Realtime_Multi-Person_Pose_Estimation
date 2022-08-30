@@ -4,7 +4,7 @@
 :param centerB: int with shape (2,), centerB will point to centerA.
 :param accumulate_vec_map: one channel of paf.
 :param count: store how many pafs overlaped in one coordinate of accumulate_vec_map.
-:param params_transform: store the value of stride and crop_szie_y, crop_size_x                 
+:param params_transform: store the value of stride and crop_szie_y, crop_size_x
 """
 import random
 import sys

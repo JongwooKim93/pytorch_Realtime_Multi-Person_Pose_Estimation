@@ -377,10 +377,10 @@ def plot_pose(img_orig, joint_list, person_to_joint_assoc, bool_fast_plot=True, 
             # joint_coords[:,0] represents Y coords of both joints;
             # joint_coords[:,1], X coords
             joint_coords = joint_list[joint_indices, 0:2]
-            
+
             for joint in joint_coords:  # Draw circles at every joint
                 cv2.circle(canvas, tuple(joint[0:2].astype(
-                    int)), 4, (255,255,255), thickness=-1)            
+                    int)), 4, (255,255,255), thickness=-1)
             # mean along the axis=0 computes meanYcoord and meanXcoord -> Round
             # and make int to avoid errors
             coords_center = tuple(

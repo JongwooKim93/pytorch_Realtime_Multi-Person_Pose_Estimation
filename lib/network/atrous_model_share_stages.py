@@ -182,7 +182,7 @@ class Ying_model(nn.Module):
 
     def forward(self, x):
         saved_for_loss = []
-        paf_ret, heat_ret = [], []        
+        paf_ret, heat_ret = [], []
         x_in = self.feature_extractor(x)
         x_in_0 = self.stage_0(x_in)
         x_in = x_in_0
@@ -194,7 +194,7 @@ class Ying_model(nn.Module):
             if i != self.stages - 1:
                 x_in = torch.cat([x_PAF_pred, x_heatmap_pred, x_in_0], 1)
         saved_for_loss.append(paf_ret)
-        saved_for_loss.append(heat_ret)                
+        saved_for_loss.append(heat_ret)
         return [(paf_ret[-2], heat_ret[-2]), (paf_ret[-1], heat_ret[-1])], saved_for_loss
 
     def _initialize_weights_norm(self):
@@ -230,8 +230,8 @@ class Ying_model(nn.Module):
             print(heat_temp.data.size())
             """
             # Compute losses
-            loss1 = criterion(pred1, gt1) 
-            loss2 = criterion(pred2, gt2) 
+            loss1 = criterion(pred1, gt1)
+            loss2 = criterion(pred2, gt2)
             total_loss += loss1
             total_loss += loss2
             # print(total_loss)

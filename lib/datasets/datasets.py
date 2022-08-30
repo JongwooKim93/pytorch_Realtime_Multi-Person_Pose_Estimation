@@ -12,28 +12,28 @@ from . import transforms, utils
 
 def kp_connections(keypoints):
     kp_lines = [
-        [keypoints.index('neck'), keypoints.index('right_hip')],  
+        [keypoints.index('neck'), keypoints.index('right_hip')],
         [keypoints.index('right_hip'), keypoints.index('right_knee')],
         [keypoints.index('right_knee'), keypoints.index('right_ankle')],
-        [keypoints.index('neck'), keypoints.index('left_hip')],                
+        [keypoints.index('neck'), keypoints.index('left_hip')],
         [keypoints.index('left_hip'), keypoints.index('left_knee')],
         [keypoints.index('left_knee'), keypoints.index('left_ankle')],
-        [keypoints.index('neck'), keypoints.index('right_shoulder')],          
+        [keypoints.index('neck'), keypoints.index('right_shoulder')],
         [keypoints.index('right_shoulder'), keypoints.index('right_elbow')],
-        [keypoints.index('right_elbow'), keypoints.index('right_wrist')],     
-        [keypoints.index('right_shoulder'), keypoints.index('right_eye')],        
-        [keypoints.index('neck'), keypoints.index('left_shoulder')], 
+        [keypoints.index('right_elbow'), keypoints.index('right_wrist')],
+        [keypoints.index('right_shoulder'), keypoints.index('right_eye')],
+        [keypoints.index('neck'), keypoints.index('left_shoulder')],
         [keypoints.index('left_shoulder'), keypoints.index('left_elbow')],
         [keypoints.index('left_elbow'), keypoints.index('left_wrist')],
-        [keypoints.index('left_shoulder'), keypoints.index('left_eye')],               
-        [keypoints.index('neck'), keypoints.index('nose')],                      
+        [keypoints.index('left_shoulder'), keypoints.index('left_eye')],
+        [keypoints.index('neck'), keypoints.index('nose')],
         [keypoints.index('nose'), keypoints.index('right_eye')],
-        [keypoints.index('nose'), keypoints.index('left_eye')],        
+        [keypoints.index('nose'), keypoints.index('left_eye')],
         [keypoints.index('right_eye'), keypoints.index('right_ear')],
         [keypoints.index('left_eye'), keypoints.index('left_ear')]
     ]
     return kp_lines
-    
+
 def get_keypoints():
     """Get the COCO keypoints and their left/right flip coorespondence map."""
     # Keypoints are not available in the COCO json for the test split, so we
@@ -43,7 +43,7 @@ def get_keypoints():
         'neck',
         'right_shoulder',
         'right_elbow',
-        'right_wrist',   
+        'right_wrist',
         'left_shoulder',
         'left_elbow',
         'left_wrist',
@@ -53,13 +53,13 @@ def get_keypoints():
         'left_hip',
         'left_knee',
         'left_ankle',
-        'right_eye',                                                                    
+        'right_eye',
         'left_eye',
         'right_ear',
         'left_ear']
 
     return keypoints
-    
+
 def collate_images_anns_meta(batch):
     images = torch.utils.data.dataloader.default_collate([b[0] for b in batch])
     anns = [b[1] for b in batch]
@@ -87,7 +87,7 @@ def collate_images_targets_meta(batch):
 
     images = torch.utils.data.dataloader.default_collate([b[0] for b in batch])
     targets1 = torch.utils.data.dataloader.default_collate([b[1] for b in batch])
-    targets2 = torch.utils.data.dataloader.default_collate([b[2] for b in batch])    
+    targets2 = torch.utils.data.dataloader.default_collate([b[2] for b in batch])
 
     return images, targets1, targets2
 
@@ -129,11 +129,11 @@ class CocoKeypoints(torch.utils.data.Dataset):
         self.preprocess = preprocess or transforms.Normalize()
         self.image_transform = image_transform or transforms.image_transform
         self.target_transforms = target_transforms
-        
+
         self.HEATMAP_COUNT = len(get_keypoints())
         self.LIMB_IDS = kp_connections(get_keypoints())
         self.input_y = input_y
-        self.input_x = input_x        
+        self.input_x = input_x
         self.stride = stride
         self.log = logging.getLogger(self.__class__.__name__)
 
@@ -178,7 +178,7 @@ class CocoKeypoints(torch.utils.data.Dataset):
         }
 
         image, anns, meta = self.preprocess(image, anns, None)
-             
+
         if isinstance(image, list):
             return self.multi_image_processing(image, anns, meta, meta_init)
 
@@ -206,11 +206,11 @@ class CocoKeypoints(torch.utils.data.Dataset):
         self.log.debug(meta)
 
         heatmaps, pafs = self.get_ground_truth(anns)
-        
+
         heatmaps = torch.from_numpy(
             heatmaps.transpose((2, 0, 1)).astype(np.float32))
-            
-        pafs = torch.from_numpy(pafs.transpose((2, 0, 1)).astype(np.float32))       
+
+        pafs = torch.from_numpy(pafs.transpose((2, 0, 1)).astype(np.float32))
         return image, heatmaps, pafs
 
     def remove_illegal_joint(self, keypoints):
@@ -223,7 +223,7 @@ class CocoKeypoints(torch.utils.data.Dataset):
         keypoints[mask] = MAGIC_CONSTANT
 
         return keypoints
-        
+
     def add_neck(self, keypoint):
         '''
         MS COCO annotation order:
@@ -255,9 +255,9 @@ class CocoKeypoints(torch.utils.data.Dataset):
         keypoint = keypoint[our_order, :]
 
         return keypoint
-                
+
     def get_ground_truth(self, anns):
-    
+
         grid_y = int(self.input_y / self.stride)
         grid_x = int(self.input_x / self.stride)
         channels_heat = (self.HEATMAP_COUNT + 1)
@@ -306,7 +306,7 @@ class CocoKeypoints(torch.utils.data.Dataset):
             0.
         )
         return heatmaps, pafs
-        
+
     def __len__(self):
         return len(self.ids)
 

@@ -112,17 +112,17 @@ class feature_extractor(nn.Module):
 
         self.conv1_3x3_s2 = BasicConv2d(
             3, 32, kernel_size=3, stride=2, padding=1, bn = have_bn, bias = have_bias)
-            
+
         self.conv2_3x3_s1 = BasicConv2d(
             32, 32, kernel_size=3, stride=1, padding=1, bn = have_bn, bias = have_bias)
-            
+
         self.conv3_3x3_s1 = BasicConv2d(
             32, 64, kernel_size=3, stride=1, padding=1, bn = have_bn, bias = have_bias)
-            
+
         self.conv4_3x3_reduce = BasicConv2d(
             64, 80, kernel_size=1, stride=1, padding=1, bn = have_bn, bias = have_bias)
         self.conv4_3x3 = BasicConv2d(80, 192, kernel_size=3, bn = have_bn,  bias = have_bias)
-        
+
         self.inception_a1 = InceptionA(192, pool_features=32, have_bn = have_bn, have_bias =have_bias)
         self.inception_a2 = InceptionA(256, pool_features=64, have_bn = have_bn, have_bias= have_bias)
 
@@ -229,17 +229,17 @@ def build_names():
         for k in range(1, 3):
             names.append('loss_stage%d_L%d' % (j, k))
     return names
- 
+
 """Load pretrained model on Imagenet
 :param model, the PyTorch nn.Module which will train.
-:param model_path, the directory which load the pretrained model, will download one if not have.               
-"""    
+:param model_path, the directory which load the pretrained model, will download one if not have.
+"""
 def use_inception(model):
-    
+
     url = 'https://download.pytorch.org/models/inception_v3_google-1a9a5a14.pth'
     incep_state_dict = model_zoo.load_url(url)
     incep_keys = incep_state_dict.keys()
-    
+
     # load weights of vgg
     weights_load = {}
     # weight+bias,weight+bias.....(repeat 10 times)

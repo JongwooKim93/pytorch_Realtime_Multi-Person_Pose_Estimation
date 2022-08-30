@@ -13,7 +13,7 @@ import torch
 from lib.datasets.preprocessing import (inception_preprocess,
                                               rtpose_preprocess,
                                               ssd_preprocess, vgg_preprocess)
-from lib.network import im_transform                                              
+from lib.network import im_transform
 from lib.config import cfg, update_config
 from lib.utils.common import Human, BodyPart, CocoPart, CocoColors, CocoPairsRender, draw_humans
 from lib.utils.paf_to_pose import paf_to_pose_cpp
@@ -60,7 +60,7 @@ def eval_coco(outputs, annFile, imgIds):
     :returns : float, the mAP score
     """
     with open('results.json', 'w') as f:
-        json.dump(outputs, f)  
+        json.dump(outputs, f)
     cocoGt = COCO(annFile)  # load annotations
     cocoDt = cocoGt.loadRes('results.json')  # load model outputs
 
@@ -121,7 +121,7 @@ def append_result(image_id, humans, upsample_keypoints, outputs):
     :param joint_list: list, list of joints
     :param outputs: list of dictionaries with the following keys: image_id,
                     category_id, keypoints, score
-    """ 
+    """
     for human in humans:
         one_result = {
             "image_id": 0,
@@ -130,8 +130,8 @@ def append_result(image_id, humans, upsample_keypoints, outputs):
             "score": 0
         }
         one_result["image_id"] = image_id
-        keypoints = np.zeros((18, 3))       
-        
+        keypoints = np.zeros((18, 3))
+
         all_scores = []
         for i in range(cfg.MODEL.NUM_KEYPOINTS):
             if i not in human.body_parts.keys():
@@ -140,13 +140,13 @@ def append_result(image_id, humans, upsample_keypoints, outputs):
                 keypoints[i, 2] = 0
             else:
                 body_part = human.body_parts[i]
-                center = (body_part.x * upsample_keypoints[1] + 0.5, body_part.y * upsample_keypoints[0] + 0.5)           
+                center = (body_part.x * upsample_keypoints[1] + 0.5, body_part.y * upsample_keypoints[0] + 0.5)
                 keypoints[i, 0] = center[0]
                 keypoints[i, 1] = center[1]
-                keypoints[i, 2] = 1     
-                score = human.body_parts[i].score 
+                keypoints[i, 2] = 1
+                score = human.body_parts[i].score
                 all_scores.append(score)
-                
+
         keypoints = keypoints[ORDER_COCO,:]
         one_result["score"] = 1.
         one_result["keypoints"] = list(keypoints.reshape(51))
@@ -193,7 +193,7 @@ def append_result_legacy(image_id, person_to_joint_assoc, joint_list, outputs):
         one_result["keypoints"] = list(keypoints.reshape(51))
 
         outputs.append(one_result)
-        
+
 def handle_paf_and_heat(normal_heat, flipped_heat, normal_paf, flipped_paf):
     """Compute the average of normal and flipped heatmap and paf
     :param normal_heat: numpy array, the normal heatmap
@@ -241,14 +241,14 @@ def handle_paf_and_heat(normal_heat, flipped_heat, normal_paf, flipped_paf):
 
     return averaged_paf, averaged_heatmap
 
-        
+
 def run_eval(image_dir, anno_file, vis_dir, model, preprocess):
     """Run the evaluation on the test set and report mAP score
     :param model: the model to test
     :returns: float, the reported mAP score
-    """   
+    """
     coco = COCO(anno_file)
-    cat_ids = coco.getCatIds(catNms=['person'])    
+    cat_ids = coco.getCatIds(catNms=['person'])
     img_ids = coco.getImgIds(catIds=cat_ids)
     print("Total number of validation images {}".format(len(img_ids)))
 
@@ -270,9 +270,9 @@ def run_eval(image_dir, anno_file, vis_dir, model, preprocess):
         paf, heatmap, scale_img = get_outputs(oriImg, model,  preprocess)
 
         humans = paf_to_pose_cpp(heatmap, paf, cfg)
-                
+
         out = draw_humans(oriImg, humans)
-            
+
         vis_path = os.path.join(vis_dir, file_name)
         cv2.imwrite(vis_path, out)
         # subset indicated how many peoples foun in this image.

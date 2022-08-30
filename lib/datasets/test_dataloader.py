@@ -113,28 +113,28 @@ preprocess = transforms.Compose([
 
 def kp_connections(keypoints):
     kp_lines = [
-        [keypoints.index('neck'), keypoints.index('right_hip')],  
+        [keypoints.index('neck'), keypoints.index('right_hip')],
         [keypoints.index('right_hip'), keypoints.index('right_knee')],
         [keypoints.index('right_knee'), keypoints.index('right_ankle')],
-        [keypoints.index('neck'), keypoints.index('left_hip')],                
+        [keypoints.index('neck'), keypoints.index('left_hip')],
         [keypoints.index('left_hip'), keypoints.index('left_knee')],
         [keypoints.index('left_knee'), keypoints.index('left_ankle')],
-        [keypoints.index('neck'), keypoints.index('right_shoulder')],          
+        [keypoints.index('neck'), keypoints.index('right_shoulder')],
         [keypoints.index('right_shoulder'), keypoints.index('right_elbow')],
-        [keypoints.index('right_elbow'), keypoints.index('right_wrist')],     
-        [keypoints.index('right_shoulder'), keypoints.index('right_eye')],        
-        [keypoints.index('neck'), keypoints.index('left_shoulder')], 
+        [keypoints.index('right_elbow'), keypoints.index('right_wrist')],
+        [keypoints.index('right_shoulder'), keypoints.index('right_eye')],
+        [keypoints.index('neck'), keypoints.index('left_shoulder')],
         [keypoints.index('left_shoulder'), keypoints.index('left_elbow')],
         [keypoints.index('left_elbow'), keypoints.index('left_wrist')],
-        [keypoints.index('left_shoulder'), keypoints.index('left_eye')],               
-        [keypoints.index('neck'), keypoints.index('nose')],                      
+        [keypoints.index('left_shoulder'), keypoints.index('left_eye')],
+        [keypoints.index('neck'), keypoints.index('nose')],
         [keypoints.index('nose'), keypoints.index('right_eye')],
-        [keypoints.index('nose'), keypoints.index('left_eye')],        
+        [keypoints.index('nose'), keypoints.index('left_eye')],
         [keypoints.index('right_eye'), keypoints.index('right_ear')],
         [keypoints.index('left_eye'), keypoints.index('left_ear')]
     ]
     return kp_lines
-    
+
 def get_keypoints():
     """Get the COCO keypoints and their left/right flip coorespondence map."""
     # Keypoints are not available in the COCO json for the test split, so we
@@ -144,7 +144,7 @@ def get_keypoints():
         'neck',
         'right_shoulder',
         'right_elbow',
-        'right_wrist',   
+        'right_wrist',
         'left_shoulder',
         'left_elbow',
         'left_wrist',
@@ -154,13 +154,13 @@ def get_keypoints():
         'left_hip',
         'left_knee',
         'left_ankle',
-        'right_eye',                                                                    
+        'right_eye',
         'left_eye',
         'right_ear',
         'left_ear']
 
     return keypoints
-    
+
 limb_thickness = 4
 
 joint_to_limb_heatmap_relationship = kp_connections(get_keypoints())
@@ -172,34 +172,34 @@ colors = [
     [85, 255, 0], [0, 255, 0], [0, 255, 85], [0, 255, 170], [0, 255, 255],
     [0, 170, 255], [0, 85, 255], [0, 0, 255], [85, 0, 255], [170, 0, 255],
     [255, 0, 255], [255, 0, 170], [255, 0, 85], [255, 0, 0]]
-    
+
 def inverse_transform_image(torch_image):
-    
+
     mean=[0.485, 0.456, 0.406]
     std=[0.229, 0.224, 0.225]
-    
+
     image = torch_image.numpy()
-    image = image.transpose(1,2,0)    
+    image = image.transpose(1,2,0)
     image = image*std+mean
     image = image*255
     image = image.astype(np.uint8)
 
     image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-    
+
     return image
-    
+
 def inverse_vgg_preprocess(image):
     means = [0.485, 0.456, 0.406]
     stds = [0.229, 0.224, 0.225]
     image = image.transpose((1,2,0))
-    
+
     for i in range(3):
         image[:, :, i] = image[:, :, i] * stds[i]
         image[:, :, i] = image[:, :, i] + means[i]
     image = image.copy()[:,:,::-1]
     image = image*255
-    
-    return image         
+
+    return image
 
 
 train_datas = [datasets.CocoKeypoints(
@@ -215,8 +215,8 @@ train_data = torch.utils.data.ConcatDataset(train_datas)
 
 train_loader = torch.utils.data.DataLoader(
     train_data, batch_size=cfg.TRAIN.BATCH_SIZE_PER_GPU*len(cfg.GPUS), shuffle=True,
-    pin_memory=cfg.PIN_MEMORY, num_workers=cfg.WORKERS, drop_last=True)   
-    
+    pin_memory=cfg.PIN_MEMORY, num_workers=cfg.WORKERS, drop_last=True)
+
 
 val_data = datasets.CocoKeypoints(
     root=cfg.DATASET.VAL_IMAGE_DIR,
@@ -228,7 +228,7 @@ val_data = datasets.CocoKeypoints(
 )
 val_loader = torch.utils.data.DataLoader(
     val_data, batch_size=cfg.TEST.BATCH_SIZE_PER_GPU*len(cfg.GPUS), shuffle=False,
-    pin_memory=cfg.PIN_MEMORY, num_workers=cfg.WORKERS, drop_last=True) 
+    pin_memory=cfg.PIN_MEMORY, num_workers=cfg.WORKERS, drop_last=True)
 
 
 
@@ -243,8 +243,8 @@ for batch_idx, (image, heatmaps, pafs) in enumerate(train_loader):
     img = inverse_vgg_preprocess(image)
     heatmap = heatmaps[index].cpu().numpy().transpose((1,2,0))
     paf = pafs[index].cpu().numpy().transpose((1,2,0))
-    param = {'thre1': 0.1, 'thre2': 0.05, 'thre3': 0.5} 
-    
+    param = {'thre1': 0.1, 'thre2': 0.05, 'thre3': 0.5}
+
     joint_list, person_to_joint_assoc = paf_to_pose(heatmap, paf)
 
     keypoints = get_result(person_to_joint_assoc, joint_list)
@@ -257,7 +257,7 @@ for batch_idx, (image, heatmaps, pafs) in enumerate(train_loader):
             joint = keypoint[j]
             print(joint)
             if joint[2]==1:
-                cv2.circle(img, tuple(joint[0:2].astype(int)), 2, colors[j], thickness=-1)               
+                cv2.circle(img, tuple(joint[0:2].astype(int)), 2, colors[j], thickness=-1)
         for k in range(NUM_LIMBS):
             src_joint = keypoint[joint_to_limb_heatmap_relationship[k][0]]
             dst_joint = keypoint[joint_to_limb_heatmap_relationship[k][1]]
@@ -276,7 +276,7 @@ for batch_idx, (image, heatmaps, pafs) in enumerate(train_loader):
                 # copying it
                 polygon = cv2.ellipse2Poly(
                     coords_center, (int(limb_length / 2), limb_thickness), int(angle), 0, 360, 1)
-                cv2.fillConvexPoly(img, polygon, colors[k])            
+                cv2.fillConvexPoly(img, polygon, colors[k])
     #    print(one_dict.keys())
     #if output_picture_name:
-    cv2.imwrite(os.path.join(vis_dir, str(batch_idx)+'.png'), img)    
+    cv2.imwrite(os.path.join(vis_dir, str(batch_idx)+'.png'), img)

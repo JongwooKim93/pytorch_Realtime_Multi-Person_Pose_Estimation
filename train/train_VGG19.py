@@ -170,6 +170,7 @@ def train(train_loader, model, optimizer, epoch):
     return losses.avg
 
 
+@torch.no_grad()
 def validate(val_loader, model, epoch):
     losses = AverageMeter()
 

@@ -50,37 +50,6 @@ def train_cli(parser):
                        help='number of iterations to print the training statistics')
 
 
-def train_factory(args, preprocess, target_transforms):
-    train_datas = [datasets.CocoKeypoints(
-        root=args.train_image_dir,
-        annFile=item,
-        preprocess=preprocess,
-        image_transform=transforms.image_transform_train,
-        target_transforms=target_transforms,
-        n_images=args.n_images,
-    ) for item in args.train_annotations]
-
-    train_data = torch.utils.data.ConcatDataset(train_datas)
-
-    train_loader = torch.utils.data.DataLoader(
-        train_data, batch_size=args.batch_size, shuffle=True,
-        pin_memory=args.pin_memory, num_workers=args.loader_workers, drop_last=True)
-
-    val_data = datasets.CocoKeypoints(
-        root=args.val_image_dir,
-        annFile=args.val_annotations,
-        preprocess=preprocess,
-        image_transform=transforms.image_transform_train,
-        target_transforms=target_transforms,
-        n_images=args.n_images,
-    )
-    val_loader = torch.utils.data.DataLoader(
-        val_data, batch_size=args.batch_size, shuffle=False,
-        pin_memory=args.pin_memory, num_workers=args.loader_workers, drop_last=True)
-
-    return train_loader, val_loader, train_data, val_data
-
-
 def cli():
     parser = argparse.ArgumentParser(
         description=__doc__,
@@ -117,19 +86,36 @@ def cli():
 
     return args
 
-args = cli()
 
-print("Loading dataset...")
-# load train data
-preprocess = transforms.Compose(
-    [
-        transforms.Normalize(),
-        transforms.RandomApply(transforms.HFlip(), 0.5),
-        transforms.RescaleRelative(),
-        transforms.Crop(args.square_edge),
-        transforms.CenterPad(args.square_edge),
-    ])
-train_loader, val_loader, train_data, val_data = train_factory(args, preprocess, target_transforms=None)
+def train_factory(args, preprocess, target_transforms):
+    train_datas = [datasets.CocoKeypoints(
+        root=args.train_image_dir,
+        annFile=item,
+        preprocess=preprocess,
+        image_transform=transforms.image_transform_train,
+        target_transforms=target_transforms,
+        n_images=args.n_images,
+    ) for item in args.train_annotations]
+
+    train_data = torch.utils.data.ConcatDataset(train_datas)
+
+    train_loader = torch.utils.data.DataLoader(
+        train_data, batch_size=args.batch_size, shuffle=True,
+        pin_memory=args.pin_memory, num_workers=args.loader_workers, drop_last=True)
+
+    val_data = datasets.CocoKeypoints(
+        root=args.val_image_dir,
+        annFile=args.val_annotations,
+        preprocess=preprocess,
+        image_transform=transforms.image_transform_train,
+        target_transforms=target_transforms,
+        n_images=args.n_images,
+    )
+    val_loader = torch.utils.data.DataLoader(
+        val_data, batch_size=args.batch_size, shuffle=False,
+        pin_memory=args.pin_memory, num_workers=args.loader_workers, drop_last=True)
+
+    return train_loader, val_loader, train_data, val_data
 
 
 def get_loss(saved_for_loss, heat_temp, vec_temp):
@@ -225,6 +211,22 @@ class AverageMeter(object):
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
+
+
+args = cli()
+
+print("Loading dataset...")
+# load train data
+preprocess = transforms.Compose(
+    [
+        transforms.Normalize(),
+        transforms.RandomApply(transforms.HFlip(), 0.5),
+        transforms.RescaleRelative(),
+        transforms.Crop(args.square_edge),
+        transforms.CenterPad(args.square_edge),
+    ])
+train_loader, val_loader, train_data, val_data = train_factory(args, preprocess, target_transforms=None)
+
 
 # model
 model = get_model(trunk='vgg19')

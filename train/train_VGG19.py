@@ -213,84 +213,83 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
 
-args = cli()
+if __name__ == '__main__':
+    args = cli()
 
-print("Loading dataset...")
-# load train data
-preprocess = transforms.Compose(
-    [
-        transforms.Normalize(),
-        transforms.RandomApply(transforms.HFlip(), 0.5),
-        transforms.RescaleRelative(),
-        transforms.Crop(args.square_edge),
-        transforms.CenterPad(args.square_edge),
-    ])
-train_loader, val_loader, train_data, val_data = train_factory(args, preprocess, target_transforms=None)
+    print("Loading dataset...")
+    # load train data
+    preprocess = transforms.Compose(
+        [
+            transforms.Normalize(),
+            transforms.RandomApply(transforms.HFlip(), 0.5),
+            transforms.RescaleRelative(),
+            transforms.Crop(args.square_edge),
+            transforms.CenterPad(args.square_edge),
+        ])
+    train_loader, val_loader, train_data, val_data = train_factory(args, preprocess, target_transforms=None)
 
+    # model
+    model = get_model(trunk='vgg19')
+    model = torch.nn.DataParallel(model).cuda()
 
-# model
-model = get_model(trunk='vgg19')
-model = torch.nn.DataParallel(model).cuda()
+    # load pretrained
+    use_vgg(model)
 
-# load pretrained
-use_vgg(model)
+    # Fix the VGG weights first, and then the weights will be released
+    for i in range(20):
+        for param in model.module.model0[i].parameters():
+            param.requires_grad = False
 
-# Fix the VGG weights first, and then the weights will be released
-for i in range(20):
-    for param in model.module.model0[i].parameters():
-        param.requires_grad = False
+    trainable_vars = [param for param in model.parameters() if param.requires_grad]
+    optimizer = torch.optim.SGD(trainable_vars, lr=args.lr,
+                                momentum=args.momentum,
+                                weight_decay=args.weight_decay,
+                                nesterov=args.nesterov)
 
-trainable_vars = [param for param in model.parameters() if param.requires_grad]
-optimizer = torch.optim.SGD(trainable_vars, lr=args.lr,
-                            momentum=args.momentum,
-                            weight_decay=args.weight_decay,
-                            nesterov=args.nesterov)
+    for epoch in range(5):
+        # train for one epoch
+        train_loss = train(train_loader, model, optimizer, epoch)
 
-for epoch in range(5):
-    # train for one epoch
-    train_loss = train(train_loader, model, optimizer, epoch)
+        # evaluate on validation set
+        val_loss = validate(val_loader, model, epoch)
 
-    # evaluate on validation set
-    val_loss = validate(val_loader, model, epoch)
+        torch.cuda.empty_cache()
+        print(f'Epoch: [{epoch}] train loss: {train_loss}, val loss: {val_loss}')
 
-    torch.cuda.empty_cache()
-    print(f'Epoch: [{epoch}] train loss: {train_loss}, val loss: {val_loss}')
+    # Release all weights
+    for param in model.module.parameters():
+        param.requires_grad = True
 
-# Release all weights
-for param in model.module.parameters():
-    param.requires_grad = True
+    trainable_vars = [param for param in model.parameters() if param.requires_grad]
+    optimizer = torch.optim.SGD(trainable_vars, lr=args.lr,
+                                momentum=args.momentum,
+                                weight_decay=args.weight_decay,
+                                nesterov=args.nesterov)
 
-trainable_vars = [param for param in model.parameters() if param.requires_grad]
-optimizer = torch.optim.SGD(trainable_vars, lr=args.lr,
-                            momentum=args.momentum,
-                            weight_decay=args.weight_decay,
-                            nesterov=args.nesterov)
+    lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.8, patience=5, verbose=True, threshold=0.0001, threshold_mode='rel', cooldown=3, min_lr=0, eps=1e-08)
 
-lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.8, patience=5, verbose=True, threshold=0.0001, threshold_mode='rel', cooldown=3, min_lr=0, eps=1e-08)
+    best_val_loss = np.inf
 
-best_val_loss = np.inf
+    model_save_filename = SRC_DIR.joinpath('network','weight', 'best_pose.pth')
 
-model_save_filename = SRC_DIR.joinpath('network','weight', 'best_pose.pth')
+    if not model_save_filename.parent.is_dir():
+        model_save_filename.parent.mkdir(parents=True)
 
-if not model_save_filename.parent.is_dir():
-    model_save_filename.parent.mkdir(parents=True)
+    for epoch in range(5, args.epochs):
+        # train for one epoch
+        train_loss = train(train_loader, model, optimizer, epoch)
 
-for epoch in range(5, args.epochs):
+        # evaluate on validation set
+        val_loss = validate(val_loader, model, epoch)
 
-    # train for one epoch
-    train_loss = train(train_loader, model, optimizer, epoch)
+        lr_scheduler.step(val_loss)
 
-    # evaluate on validation set
-    val_loss = validate(val_loader, model, epoch)
+        print(f'Epoch: [{epoch}] train loss: {train_loss}, val loss: {val_loss}')
 
-    lr_scheduler.step(val_loss)
+        is_best = val_loss < best_val_loss
+        best_val_loss = min(val_loss, best_val_loss)
+        if is_best:
+            print(f'[TRACE] Update {model_save_filename}')
+            torch.save(model.state_dict(), model_save_filename)
 
-    print(f'Epoch: [{epoch}] train loss: {train_loss}, val loss: {val_loss}')
-
-    is_best = val_loss < best_val_loss
-    best_val_loss = min(val_loss, best_val_loss)
-    if is_best:
-        print(f'[TRACE] Update {model_save_filename}')
-        torch.save(model.state_dict(), model_save_filename)
-
-    torch.cuda.empty_cache()
+        torch.cuda.empty_cache()

@@ -25,6 +25,7 @@ from evaluate.coco_eval import get_outputs, handle_paf_and_heat
 from lib.utils.common import Human, BodyPart, CocoPart, CocoColors, CocoPairsRender, draw_humans
 from lib.utils.paf_to_pose import paf_to_pose_cpp
 import ffmpeg
+import time
 
 def check_rotation(path_video_file):
     # this returns meta-data of the video file in form of a dictionary
@@ -33,12 +34,13 @@ def check_rotation(path_video_file):
     # from the dictionary, meta_dict['streams'][0]['tags']['rotate'] is the key
     # we are looking for
     rotateCode = None
-    if int(meta_dict['streams'][0]['tags']['rotate']) == 90:
-        rotateCode = cv2.ROTATE_90_CLOCKWISE
-    elif int(meta_dict['streams'][0]['tags']['rotate']) == 180:
-        rotateCode = cv2.ROTATE_180
-    elif int(meta_dict['streams'][0]['tags']['rotate']) == 270:
-        rotateCode = cv2.ROTATE_90_COUNTERCLOCKWISE
+    if meta_dict['streams'][0]['tags'].get('rotate') is not None:
+        if int(meta_dict['streams'][0]['tags']['rotate']) == 90:
+            rotateCode = cv2.ROTATE_90_CLOCKWISE
+        elif int(meta_dict['streams'][0]['tags']['rotate']) == 180:
+            rotateCode = cv2.ROTATE_180
+        elif int(meta_dict['streams'][0]['tags']['rotate']) == 270:
+            rotateCode = cv2.ROTATE_90_COUNTERCLOCKWISE
 
     return rotateCode
 
@@ -59,14 +61,17 @@ args = parser.parse_args()
 # update config file
 update_config(cfg, args)
 
+weight = {k.replace('module.', ''): v for k, v in torch.load(args.weight).items()}
+
 model = get_model('vgg19')
-model.load_state_dict(torch.load(args.weight))
+model.load_state_dict(weight)
 model.cuda()
 model.float()
 model.eval()
 rotate_code = cv2.ROTATE_180
+times = []
 if __name__ == "__main__":
-    video_path = input("Enter video path")
+    video_path = "/src/JW-MPPE/YUNAKIM_Trim.mp4"#input("Enter video path")
     video_capture_dummy = cv2.VideoCapture(video_path)
     ret,oriImg = video_capture_dummy.read()
     shape_tuple = tuple(oriImg.shape[1::-1])
@@ -78,7 +83,7 @@ if __name__ == "__main__":
 
     ##New stuff
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    vid_out = cv2.VideoWriter('output.avi', fourcc, 20.0, shape_tuple)
+    vid_out = cv2.VideoWriter('output.avi', fourcc, 30.0, shape_tuple)
     ###
 
     proc_frame_list = []
@@ -91,9 +96,8 @@ if __name__ == "__main__":
                 oriImg = correct_rotation(oriImg, rotate_code)
             oriImg_list.append(oriImg)
 
-            cv2.imshow('Video', oriImg)
-
-    #        vid_out.write(out)
+            if 0 == ret:
+                break;
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
         except :
@@ -106,23 +110,28 @@ if __name__ == "__main__":
     count = 0
     for oriImg in oriImg_list:
         count+=1
-        if count%50 == 0:
+        if count%100 == 0:
             print(count, "frames processed")
 
         try:
             shape_dst = np.min(oriImg.shape[0:2])
-            print(oriImg.shape)
+            #print(oriImg.shape)
         except:
             break
         with torch.no_grad():
+                s = time.time()
                 paf, heatmap, imscale = get_outputs(
                     oriImg, model, 'rtpose')
+                e = time.time()
 
+        times.append(e-s)
         humans = paf_to_pose_cpp(heatmap, paf, cfg)
 
         out = draw_humans(oriImg, humans)
 
         vid_out.write(out)
+
+    print(" min : {}ms max : {}ms average : {}ms".format(min(times)*1000,max(times)*1000,sum(times)*1000/len(times)))
 
     # When everything is done, release the capture
 

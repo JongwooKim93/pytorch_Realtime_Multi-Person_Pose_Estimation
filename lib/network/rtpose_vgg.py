@@ -23,10 +23,39 @@ def make_stages(cfg_dict):
                 layers += [nn.MaxPool2d(kernel_size=v[0], stride=v[1],
                                         padding=v[2])]
             else:
-                conv2d = nn.Conv2d(in_channels=v[0], out_channels=v[1],
-                                   kernel_size=v[2], stride=v[3],
-                                   padding=v[4])
-                layers += [conv2d, nn.ReLU(inplace=True)]
+                UseBottleNeck = 1
+                if ('_bot' not in k):
+                    UseBottleNeck = 0
+
+                if 0 == UseBottleNeck:
+                    ## This is original conv 3x3 at channel size 128
+                    conv2d = nn.Conv2d(in_channels=v[0],
+                                        out_channels=v[1],
+                                        kernel_size=v[2],
+                                        stride=v[3],
+                                        padding=v[4])
+                    layers += [conv2d, nn.ReLU(inplace=True)]
+
+                else :
+                    bottleNeckChannelSize = 24
+                    conv2dreduce = nn.Conv2d(in_channels=v[0],
+                                            out_channels=bottleNeckChannelSize,
+                                            kernel_size=1,
+                                            stride=1,
+                                            padding=0)
+                    conv2d       = nn.Conv2d(in_channels=bottleNeckChannelSize,
+                                            out_channels=bottleNeckChannelSize,
+                                            kernel_size=v[2],
+                                            stride=v[3],
+                                            padding=v[4])
+                    conv2dextand = nn.Conv2d(in_channels=bottleNeckChannelSize,
+                                            out_channels=v[1],
+                                            kernel_size=1,
+                                            stride=1,
+                                            padding=0)
+
+                    layers += [conv2dreduce, conv2d, conv2dextand, nn.ReLU(inplace=True)]
+
     one_ = list(cfg_dict[-1].keys())
     k = one_[0]
     v = cfg_dict[-1][k]
@@ -107,21 +136,21 @@ def get_model(trunk='vgg19'):
     # Stages 2 - 6
     for i in range(2, 7):
         blocks['block%d_1' % i] = [
-            {'Mconv1_stage%d_L1' % i: [185, 128, 7, 1, 3]},
-            {'Mconv2_stage%d_L1' % i: [128, 128, 7, 1, 3]},
-            {'Mconv3_stage%d_L1' % i: [128, 128, 7, 1, 3]},
-            {'Mconv4_stage%d_L1' % i: [128, 128, 7, 1, 3]},
-            {'Mconv5_stage%d_L1' % i: [128, 128, 7, 1, 3]},
+            {'Mconv1_stage%d_L1_bot' % i: [185, 128, 7, 1, 3]},
+            {'Mconv2_stage%d_L1_bot' % i: [128, 128, 7, 1, 3]},
+            {'Mconv3_stage%d_L1_bot' % i: [128, 128, 7, 1, 3]},
+            {'Mconv4_stage%d_L1_bot' % i: [128, 128, 7, 1, 3]},
+            {'Mconv5_stage%d_L1_bot' % i: [128, 128, 7, 1, 3]},
             {'Mconv6_stage%d_L1' % i: [128, 128, 1, 1, 0]},
             {'Mconv7_stage%d_L1' % i: [128, 38, 1, 1, 0]}
         ]
 
         blocks['block%d_2' % i] = [
-            {'Mconv1_stage%d_L2' % i: [185, 128, 7, 1, 3]},
-            {'Mconv2_stage%d_L2' % i: [128, 128, 7, 1, 3]},
-            {'Mconv3_stage%d_L2' % i: [128, 128, 7, 1, 3]},
-            {'Mconv4_stage%d_L2' % i: [128, 128, 7, 1, 3]},
-            {'Mconv5_stage%d_L2' % i: [128, 128, 7, 1, 3]},
+            {'Mconv1_stage%d_L2_bot' % i: [185, 128, 7, 1, 3]},
+            {'Mconv2_stage%d_L2_bot' % i: [128, 128, 7, 1, 3]},
+            {'Mconv3_stage%d_L2_bot' % i: [128, 128, 7, 1, 3]},
+            {'Mconv4_stage%d_L2_bot' % i: [128, 128, 7, 1, 3]},
+            {'Mconv5_stage%d_L2_bot' % i: [128, 128, 7, 1, 3]},
             {'Mconv6_stage%d_L2' % i: [128, 128, 1, 1, 0]},
             {'Mconv7_stage%d_L2' % i: [128, 19, 1, 1, 0]}
         ]

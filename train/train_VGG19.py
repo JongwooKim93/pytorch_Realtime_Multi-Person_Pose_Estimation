@@ -12,6 +12,8 @@ from lib.datasets import transforms, datasets
 from pathlib import Path
 from tqdm import tqdm
 
+from tensorboardX import SummaryWriter
+
 SRC_DIR = Path(__file__).parent \
     .joinpath('..') \
     .absolute() # MPPE/train/train_VGG19.py
@@ -217,6 +219,12 @@ class AverageMeter(object):
 if __name__ == '__main__':
     args = cli()
 
+    logdir = SRC_DIR.joinpath('extra', 'logs')
+    if not logdir.exists():
+        logdir.mkdir(parents=True)
+
+    writer = SummaryWriter(log_dir=logdir)
+
     print("Loading dataset...")
     # load train data
     preprocess = transforms.Compose(
@@ -254,6 +262,7 @@ if __name__ == '__main__':
         # evaluate on validation set
         val_loss = validate(val_loader, model, epoch)
 
+        writer.add_scalars('data/scalars', {'loss': val_loss, 'accuracy': train_loss}, epoch)
         torch.cuda.empty_cache()
         print(f'Epoch: [{epoch}] train loss: {train_loss}, val loss: {val_loss}')
 
@@ -285,6 +294,7 @@ if __name__ == '__main__':
 
         lr_scheduler.step(val_loss)
 
+        writer.add_scalars('data/scalars', {'loss': val_loss, 'accuracy': train_loss}, epoch)
         print(f'Epoch: [{epoch}] train loss: {train_loss}, val loss: {val_loss}')
 
         is_best = val_loss < best_val_loss
@@ -294,3 +304,6 @@ if __name__ == '__main__':
             torch.save(model.state_dict(), model_save_filename)
 
         torch.cuda.empty_cache()
+
+    writer.export_scalars_to_json(os.path.join(args.model_path, "tensorboard/all_scalars.json"))
+    writer.close()

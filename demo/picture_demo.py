@@ -40,10 +40,10 @@ args = parser.parse_args()
 # update config file
 update_config(cfg, args)
 
-
+weight = {k.replace('module.', ''): v for k, v in torch.load(args.weight).items()}
 
 model = get_model('vgg19')
-model.load_state_dict(torch.load(args.weight))
+model.load_state_dict(weight)
 model = torch.nn.DataParallel(model).cuda()
 model.float()
 model.eval()

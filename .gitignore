@@ -60,3 +60,5 @@ lib/pafprocess/pafprocess_wrap.cxx
 
 *.avi
 *.png
+
+logs

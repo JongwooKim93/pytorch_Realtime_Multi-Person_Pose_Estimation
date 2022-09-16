@@ -53,3 +53,10 @@ Temporary Items
 
 # .nfs files are created when an open file is removed but is still being accessed
 .nfs*
+
+lib/pafprocess/pafprocess.py
+lib/pafprocess/pafprocess_wrap.cpp
+lib/pafprocess/pafprocess_wrap.cxx
+
+*.avi
+*.png

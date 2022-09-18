@@ -18,6 +18,7 @@ from lib.datasets import transforms, datasets
 
 from tqdm import tqdm
 from tensorboardX import SummaryWriter
+from GPUtil import showUtilization as gpu_usage
 
 #DATA_DIR = '/data/coco'
 DATA_DIR = 'lib/datasets/coco'
@@ -152,50 +153,32 @@ preprocess = transforms.Compose([
     ])
 train_loader, val_loader, train_data, val_data = train_factory(args, preprocess, target_transforms=None)
 
-def distillation(student_result, ground_truth, teacher_result, T, alpha):
-    # distillation loss + classification loss
-    # y: student
-    # labels: hard label
-    # teacher_scores: soft label
-    return nn.KLDivLoss()(F.log_softmax(student_result/T), F.softmax(teacher_result/T)) * (T*T * 2.0 + alpha) + F.cross_entropy(student_result, ground_truth) * (1.-alpha)
-
-def get_loss(saved_for_loss, heat_temp, vec_temp):
-
-    criterion = nn.MSELoss(reduction='mean').cuda()
-    total_loss = 0
-
-    for j in range(6):
-        pred1 = saved_for_loss[2 * j]
-        pred2 = saved_for_loss[2 * j + 1] 
-
-        # Compute losses
-        loss1 = criterion(pred1, vec_temp)
-        loss2 = criterion(pred2, heat_temp) 
-
-        total_loss += loss1
-        total_loss += loss2
-        # print(total_loss)
-
-    return total_loss
-
 def get_distillation_loss(saved_for_loss_student, heatmap_target, paf_target, teacher_heatmap, teacher_paf):
     distillation_loss = 0
-    criterion = distillation
+    criterion = nn.MSELoss(reduction='mean').cuda()
     #criterion = DataParallelCriterion(criterion)
+    total_loss = 0
+    alpha=0.7
 
     for j in range(6):
         pred1 = saved_for_loss_student[2 * j]
         pred2 = saved_for_loss_student[2 * j + 1]
 
         # Compute losses
-        loss1 = distillation(pred1, paf_target, teacher_paf, T=20.0, alpha=0.7)
-        loss2 = distillation(pred2, heatmap_target, teacher_heatmap, T=20.0, alpha=0.7)
+        loss1 = criterion(pred1, teacher_paf) * alpha + criterion(pred1, paf_target) * (1.0 - alpha)
+        loss2 = criterion(pred2, teacher_heatmap) * alpha + criterion(pred2, heatmap_target) * (1.0 - alpha)
 
-        total_loss = get_loss(saved_for_loss_student, heatmap_target, paf_target)
+        total_loss += criterion(pred1, paf_target).detach() + criterion(pred2, heatmap_target).detach()
 
         distillation_loss += loss1
         distillation_loss += loss2
         # print(total_loss)
+
+    total_loss = total_loss.detach()
+
+    del pred1, pred2, loss1, loss2
+    torch.cuda.empty_cache()
+    gc.collect()
 
     return distillation_loss, total_loss
 
@@ -205,16 +188,17 @@ def train(train_loader, student, teacher, optimizer, epoch):
     # switch to train mode
     student.train()
     teacher.eval()
-
     for img, heatmap_target, paf_target in tqdm(train_loader):
 
         img = img.cuda()
-        heatmap_target = heatmap_target.cuda()
-        paf_target = paf_target.cuda()
+        heatmap_target = heatmap_target.cuda().detach()
+        paf_target = paf_target.cuda().detach()
         # compute output
         _, saved_for_loss_student = student(img)
         (teacher_paf, teacher_heatmap), _ = teacher(img)
 
+        teacher_paf = teacher_paf.detach()
+        teacher_heatmap = teacher_heatmap.detach()
 
         distillation_loss, student_gt_loss = get_distillation_loss(saved_for_loss_student, heatmap_target, paf_target, teacher_heatmap, teacher_paf)
         losses.update(student_gt_loss, img.size(0))
@@ -227,6 +211,7 @@ def train(train_loader, student, teacher, optimizer, epoch):
         del img, heatmap_target, paf_target, teacher_paf, teacher_heatmap, distillation_loss, student_gt_loss, saved_for_loss_student, _
         torch.cuda.empty_cache()
         gc.collect()
+    gpu_usage()
 
     return losses.avg  
         
@@ -243,16 +228,18 @@ def validate(val_loader, student, teacher, epoch):
         paf_target = paf_target.cuda()
         
         # compute output
-        _, saved_for_loss_student = student(img)
-        (teacher_paf, teacher_heatmap), _ = teacher(img)
+        with torch.no_grad():
+            _, saved_for_loss_student = student(img)
+            (teacher_paf, teacher_heatmap), _ = teacher(img)
 
         _, student_gt_loss = get_distillation_loss(saved_for_loss_student, heatmap_target, paf_target, teacher_heatmap, teacher_paf)
 
         losses.update(student_gt_loss.item(), img.size(0))
                 
-        del img, heatmap_target, paf_target, teacher_paf, teacher_heatmap, distillation_loss, student_gt_loss, saved_for_loss_student, _
+        del img, heatmap_target, paf_target, teacher_paf, teacher_heatmap, student_gt_loss, saved_for_loss_student, _
         torch.cuda.empty_cache()
         gc.collect()
+    gpu_usage()
 
     return losses.avg
 
@@ -305,8 +292,10 @@ for epoch in range(5):
     # evaluate on validation set
     val_loss = validate(val_loader, student, teacher, epoch)
     writer.add_scalars('data/scalars', {'val_loss': val_loss, 'train_loss': train_loss}, epoch)
+    print(f'Epoch: [{epoch}] train loss: {train_loss}, val loss: {val_loss}')
+    del train_loss, val_loss
     torch.cuda.empty_cache()
-    print(f'Epoch: [{epoch}] train loss: {train_loss}, val loss: {val_loss}')  
+    gc.collect()
 
 # Release all weights                                   
 for param in student.module.parameters():
@@ -324,7 +313,7 @@ best_val_loss = np.inf
 
 #########
 
-model_save_filename = 'lib/network/weight/best_pose_Distilation.pth'
+model_save_filename = './lib/network/weight/best_pose_Distilation.pth'
 for epoch in range(5, args.epochs):
 
     # train for one epoch

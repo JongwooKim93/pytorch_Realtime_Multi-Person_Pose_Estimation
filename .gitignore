@@ -9,7 +9,7 @@ data/*
 notebooks/*.pkl
 
 /outputs
-network/weight
+#network/weight
 
 # ------------------------------
 

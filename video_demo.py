@@ -18,7 +18,7 @@ from collections import OrderedDict
 from scipy.ndimage.morphology import generate_binary_structure
 from scipy.ndimage.filters import gaussian_filter, maximum_filter
 
-from lib.network.rtpose_vgg import get_model
+from lib.network.rtpose import get_model
 from lib.network import im_transform
 from lib.config import update_config, cfg
 from evaluate.coco_eval import get_outputs, handle_paf_and_heat
@@ -62,8 +62,9 @@ args = parser.parse_args()
 # update config file
 update_config(cfg, args)
 
-model = get_model('vgg19')
-model.load_state_dict(torch.load(args.weight))
+model = get_model('mobilenet')
+weight = {k.replace('module.', ''): v for k, v in torch.load(args.weight).items()}
+model.load_state_dict(weight)
 model.cuda()
 model.float()
 model.eval()

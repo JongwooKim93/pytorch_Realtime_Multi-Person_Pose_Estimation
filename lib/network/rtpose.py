@@ -1,7 +1,5 @@
 """CPM Pytorch Implementation"""
 
-from collections import OrderedDict
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -9,8 +7,8 @@ import torch.utils.data as data
 import torch.utils.model_zoo as model_zoo
 from torch.autograd import Variable
 from torch.nn import init
-
-
+from .rtpose_mobilenetV3 import mobilenetv3
+        
 def make_stages(cfg_dict):
     """Builds CPM stages from a dictionary
     Args:
@@ -83,15 +81,6 @@ def get_model(trunk='vgg19'):
                   {'conv4_3_CPM': [512, 256, 3, 1, 1]},
                   {'conv4_4_CPM': [256, 128, 3, 1, 1]}]
 
-    elif trunk == 'mobilenet':
-        block0 = [{'conv_bn': [3, 32, 2]},  # out: 3, 32, 184, 184
-                  {'conv_dw1': [32, 64, 1]},  # out: 32, 64, 184, 184
-                  {'conv_dw2': [64, 128, 2]},  # out: 64, 128, 92, 92
-                  {'conv_dw3': [128, 128, 1]},  # out: 128, 256, 92, 92
-                  {'conv_dw4': [128, 256, 2]},  # out: 256, 256, 46, 46
-                  {'conv4_3_CPM': [256, 256, 1, 3, 1]},
-                  {'conv4_4_CPM': [256, 128, 1, 3, 1]}]
-
     # Stage 1
     blocks['block1_1'] = [{'conv5_1_CPM_L1': [128, 128, 3, 1, 1]},
                           {'conv5_2_CPM_L1': [128, 128, 3, 1, 1]},
@@ -105,8 +94,8 @@ def get_model(trunk='vgg19'):
                           {'conv5_4_CPM_L2': [128, 512, 1, 1, 0]},
                           {'conv5_5_CPM_L2': [512, 19, 1, 1, 0]}]
 
-    # Stages 2 - 6
-    for i in range(2, 7):
+    # Stages 2 - 6/// 2 - 4
+    for i in range(2, 5):
         blocks['block%d_1' % i] = [
             {'Mconv1_stage%d_L1' % i: [185, 128, 7, 1, 3]},
             {'Mconv2_stage%d_L1' % i: [128, 128, 7, 1, 3]},
@@ -132,7 +121,11 @@ def get_model(trunk='vgg19'):
     if trunk == 'vgg19':
         print("Bulding VGG19")
         models['block0'] = make_vgg19_block(block0)
-
+    elif trunk == 'mobilenet':
+        print('Building mobilenet')
+        # output : 128, 46, 46
+        models['block0'] = mobilenetv3()
+    
     for k, v in blocks.items():
         models[k] = make_stages(list(v))
 
@@ -144,15 +137,15 @@ def get_model(trunk='vgg19'):
             self.model2_1 = model_dict['block2_1']
             self.model3_1 = model_dict['block3_1']
             self.model4_1 = model_dict['block4_1']
-            self.model5_1 = model_dict['block5_1']
-            self.model6_1 = model_dict['block6_1']
+            #self.model5_1 = model_dict['block5_1']
+            #self.model6_1 = model_dict['block6_1']
 
             self.model1_2 = model_dict['block1_2']
             self.model2_2 = model_dict['block2_2']
             self.model3_2 = model_dict['block3_2']
             self.model4_2 = model_dict['block4_2']
-            self.model5_2 = model_dict['block5_2']
-            self.model6_2 = model_dict['block6_2']
+            #self.model5_2 = model_dict['block5_2']
+            #self.model6_2 = model_dict['block6_2']
 
             self._initialize_weights_norm()
 
@@ -184,7 +177,9 @@ def get_model(trunk='vgg19'):
             out5 = torch.cat([out4_1, out4_2, out1], 1)
             saved_for_loss.append(out4_1)
             saved_for_loss.append(out4_2)
-
+            
+            return (out4_1, out4_2), saved_for_loss
+            '''
             out5_1 = self.model5_1(out5)
             out5_2 = self.model5_2(out5)
             out6 = torch.cat([out5_1, out5_2, out1], 1)
@@ -196,8 +191,8 @@ def get_model(trunk='vgg19'):
             saved_for_loss.append(out6_1)
             saved_for_loss.append(out6_2)
 
-            return (out6_1, out6_2), saved_for_loss
-        
+            return (out6_1, out6_2), saved_for_loss'''
+            
 
         def _initialize_weights_norm(self):
 
@@ -214,14 +209,14 @@ def get_model(trunk='vgg19'):
             init.normal_(self.model2_1[12].weight, std=0.01)
             init.normal_(self.model3_1[12].weight, std=0.01)
             init.normal_(self.model4_1[12].weight, std=0.01)
-            init.normal_(self.model5_1[12].weight, std=0.01)
-            init.normal_(self.model6_1[12].weight, std=0.01)
+            #init.normal_(self.model5_1[12].weight, std=0.01)
+            #init.normal_(self.model6_1[12].weight, std=0.01)
 
             init.normal_(self.model2_2[12].weight, std=0.01)
             init.normal_(self.model3_2[12].weight, std=0.01)
             init.normal_(self.model4_2[12].weight, std=0.01)
-            init.normal_(self.model5_2[12].weight, std=0.01)
-            init.normal_(self.model6_2[12].weight, std=0.01)
+            #init.normal_(self.model5_2[12].weight, std=0.01)
+            #init.normal_(self.model6_2[12].weight, std=0.01)
 
     model = rtpose_model(models)
     return model
@@ -230,7 +225,7 @@ def get_model(trunk='vgg19'):
 """Load pretrained model on Imagenet
 :param model, the PyTorch nn.Module which will train.
 :param model_path, the directory which load the pretrained model, will download one if not have.
-:param trunk, the feature extractor network of model.               
+:param trunk, the feature extractor network of model.
 """
 
 
@@ -246,6 +241,24 @@ def use_vgg(model):
     for i in range(20):
         weights_load[list(model.state_dict().keys())[i]
                      ] = vgg_state_dict[list(vgg_keys)[i]]
+
+    state = model.state_dict()
+    state.update(weights_load)
+    model.load_state_dict(state)
+    print('load imagenet pretrained model')
+
+
+def use_mobilenet(model):
+
+    url = 'https://download.pytorch.org/models/mobilenet_v3_small-047dcff4.pth'
+    mobilenet_state_dict = model_zoo.load_url(url)
+    mobilenet_keys = mobilenet_state_dict.keys()
+
+    # load weights of mobilenet
+    weights_load = {}
+    # weight+bias,weight+bias.....(repeat 10 times)
+    # for i in range(20):
+    #     weights_load[list(model.state_dict().keys())[i]] = mobilenet_state_dict[list(mobilenet_keys)[i]]
 
     state = model.state_dict()
     state.update(weights_load)
